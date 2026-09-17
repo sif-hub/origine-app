@@ -45,7 +45,7 @@ class FamilyMessage(Base):
     group_id     = Column(BigInteger, ForeignKey("family_groups.id", ondelete="CASCADE"), nullable=False)
     sender_id    = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     contenu      = Column(Text, nullable=True)
-    type_message = Column(Enum("TEXT", "IMAGE"), nullable=False, default="TEXT")
+    type_message = Column(Enum("TEXT", "IMAGE", name="message_type"), nullable=False, default="TEXT")
     nom_fichier  = Column(String(255), nullable=True)
     created_at   = Column(DateTime, default=datetime.utcnow)
 

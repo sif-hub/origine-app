@@ -24,7 +24,7 @@ class Story(Base):
     date_histoire  = Column(Date, nullable=True)
     region         = Column(String(100), nullable=True)
     village        = Column(String(150), nullable=True)
-    categorie      = Column(Enum(*CATEGORIES), nullable=False, default="AUTRE")
+    categorie      = Column(Enum(*CATEGORIES, name="story_categorie"), nullable=False, default="AUTRE")
     mots_cles      = Column(String(255), nullable=True)
     source         = Column(String(255), nullable=True)
     autoriser_tts  = Column(Boolean, nullable=False, default=True)
@@ -69,7 +69,7 @@ class StoryMedia(Base):
     __tablename__ = "story_media"
     id          = Column(BigIntPK, primary_key=True, autoincrement=True)
     story_id    = Column(BigInteger, ForeignKey("stories.id", ondelete="CASCADE"), nullable=False)
-    type        = Column(Enum("PHOTO", "VIDEO", "AUDIO"), nullable=False)
+    type        = Column(Enum("PHOTO", "VIDEO", "AUDIO", name="media_type"), nullable=False)
     nom_fichier = Column(String(255), nullable=False)
     created_at  = Column(DateTime, default=datetime.utcnow)
 
@@ -130,10 +130,10 @@ class CertificationRequest(Base):
     __tablename__ = "certification_requests"
     id                 = Column(BigIntPK, primary_key=True, autoincrement=True)
     user_id            = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    type_professionnel = Column(Enum("GRIOT", "GENEALOGISTE", "HISTORIEN", "AUTRE"), nullable=False)
+    type_professionnel = Column(Enum("GRIOT", "GENEALOGISTE", "HISTORIEN", "AUTRE", name="type_professionnel"), nullable=False)
     description        = Column(Text, nullable=True)
     document_fichier   = Column(String(255), nullable=False)
-    statut             = Column(Enum("EN_ATTENTE", "APPROUVEE", "REJETEE"), nullable=False, default="EN_ATTENTE")
+    statut             = Column(Enum("EN_ATTENTE", "APPROUVEE", "REJETEE", name="certification_statut"), nullable=False, default="EN_ATTENTE")
     created_at         = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")

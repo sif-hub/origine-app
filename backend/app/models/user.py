@@ -17,11 +17,11 @@ class User(Base):
     prenom            = Column(String(100), nullable=False)
     email             = Column(String(150), nullable=False, unique=True)
     telephone         = Column(String(20), nullable=True)
-    sexe              = Column(Enum("M", "F", "AUTRE"), nullable=False)
+    sexe              = Column(Enum("M", "F", "AUTRE", name="user_sexe"), nullable=False)
     date_naissance    = Column(Date, nullable=True)
     mot_de_passe_hash = Column(String(255), nullable=False)
     role              = Column(
-        Enum("ADMIN", "MODERATEUR", "UTILISATEUR"),
+        Enum("ADMIN", "MODERATEUR", "UTILISATEUR", name="user_role"),
         nullable=False, default="UTILISATEUR"
     )
     photo_profil      = Column(String(255), nullable=True)
@@ -33,12 +33,12 @@ class User(Base):
     profession        = Column(String(150), nullable=True)
     tribe_id          = Column(BigInteger, ForeignKey("tribes.id", ondelete="SET NULL"), nullable=True)
     clan_id           = Column(BigInteger, ForeignKey("clans.id", ondelete="SET NULL"), nullable=True)
-    statut_auteur     = Column(Enum("UTILISATEUR", "PROFESSIONNEL"), nullable=False, default="UTILISATEUR")
+    statut_auteur     = Column(Enum("UTILISATEUR", "PROFESSIONNEL", name="user_statut_auteur"), nullable=False, default="UTILISATEUR")
     certifie          = Column(Boolean, nullable=False, default=False)
     email_verifie     = Column(SmallInteger, nullable=False, default=0)
     token_verification = Column(String(255), nullable=True)
     statut            = Column(
-        Enum("ACTIF", "SUSPENDU", "SUPPRIME"),
+        Enum("ACTIF", "SUSPENDU", "SUPPRIME", name="user_statut"),
         nullable=False, default="ACTIF"
     )
     derniere_connexion = Column(DateTime, nullable=True)

@@ -23,11 +23,11 @@ class AILog(Base):
     user_id      = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     provider_id  = Column(BigInteger, ForeignKey("ai_providers.id", ondelete="SET NULL"), nullable=True)
     type_requete = Column(
-        Enum("GENEALOGIE", "HISTOIRE", "CULTURE", "RECHERCHE_NATURELLE", "CHATBOT"),
+        Enum("GENEALOGIE", "HISTOIRE", "CULTURE", "RECHERCHE_NATURELLE", "CHATBOT", name="ai_type_requete"),
         nullable=False
     )
     prompt     = Column(Text, nullable=True)
     reponse    = Column(Text, nullable=True)
-    statut     = Column(Enum("SUCCES", "ECHEC"), nullable=False, default="SUCCES")
+    statut     = Column(Enum("SUCCES", "ECHEC", name="ai_log_statut"), nullable=False, default="SUCCES")
     duree_ms   = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

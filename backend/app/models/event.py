@@ -15,7 +15,7 @@ class FamilyEvent(Base):
     id                  = Column(BigIntPK, primary_key=True, autoincrement=True)
     created_by          = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     nom                 = Column(String(150), nullable=False)
-    type_evenement      = Column(Enum(*TYPES_EVENEMENT), nullable=False, default="AUTRE")
+    type_evenement      = Column(Enum(*TYPES_EVENEMENT, name="type_evenement"), nullable=False, default="AUTRE")
     date_evenement      = Column(Date, nullable=False)
     heure               = Column(Time, nullable=True)
     description         = Column(Text, nullable=True)

@@ -38,7 +38,7 @@ class Family(Base):
     id          = Column(BigIntPK, primary_key=True, autoincrement=True)
     nom         = Column(String(200), nullable=False)
     owner_id    = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    visibilite  = Column(Enum("PRIVE", "PARTAGE", "PUBLIC"), nullable=False, default="PRIVE")
+    visibilite  = Column(Enum("PRIVE", "PARTAGE", "PUBLIC", name="visibilite_type"), nullable=False, default="PRIVE")
     description = Column(Text, nullable=True)
     created_at  = Column(DateTime, default=datetime.utcnow)
     updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -64,7 +64,7 @@ class Person(Base):
     linked_user_id  = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     nom             = Column(String(150), nullable=False)
     prenom          = Column(String(150), nullable=True)
-    sexe            = Column(Enum("M", "F", "INCONNU"), nullable=False, default="INCONNU")
+    sexe            = Column(Enum("M", "F", "INCONNU", name="person_sexe"), nullable=False, default="INCONNU")
     date_naissance  = Column(Date, nullable=True)
     date_deces      = Column(Date, nullable=True)
     vivant          = Column(SmallInteger, nullable=False, default=1)
@@ -81,7 +81,7 @@ class Person(Base):
     nom_pere_texte     = Column(String(200), nullable=True)
     nom_mere_texte     = Column(String(200), nullable=True)
 
-    visibilite                  = Column(Enum("PRIVE", "PARTAGE", "PUBLIC"), nullable=False, default="PRIVE")
+    visibilite                  = Column(Enum("PRIVE", "PARTAGE", "PUBLIC", name="visibilite_type"), nullable=False, default="PRIVE")
     peut_voir                   = Column(Boolean, nullable=False, default=True)
     peut_modifier                = Column(Boolean, nullable=False, default=False)
     peut_ajouter_documents       = Column(Boolean, nullable=False, default=False)
@@ -129,7 +129,7 @@ class Relationship(Base):
     person_id         = Column(BigInteger, ForeignKey("persons.id", ondelete="CASCADE"), nullable=False)
     related_person_id = Column(BigInteger, ForeignKey("persons.id", ondelete="CASCADE"), nullable=False)
     type_relation     = Column(
-        Enum("PERE", "MERE", "CONJOINT", "ENFANT", "FRERE_SOEUR", "GRAND_PARENT"),
+        Enum("PERE", "MERE", "CONJOINT", "ENFANT", "FRERE_SOEUR", "GRAND_PARENT", name="type_relation"),
         nullable=False
     )
     date_debut = Column(Date, nullable=True)
@@ -145,7 +145,7 @@ class PersonDocument(Base):
     __tablename__ = "person_documents"
     id            = Column(BigIntPK, primary_key=True, autoincrement=True)
     person_id     = Column(BigInteger, ForeignKey("persons.id", ondelete="CASCADE"), nullable=False)
-    type_document = Column(Enum("ACTE_NAISSANCE", "ACTE_MARIAGE", "ACTE_DECES", "AUTRE"), nullable=False)
+    type_document = Column(Enum("ACTE_NAISSANCE", "ACTE_MARIAGE", "ACTE_DECES", "AUTRE", name="type_document"), nullable=False)
     nom_fichier   = Column(String(255), nullable=False)
     uploaded_by   = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at    = Column(DateTime, default=datetime.utcnow)
@@ -166,7 +166,7 @@ class PersonMemory(Base):
     __tablename__ = "person_memories"
     id           = Column(BigIntPK, primary_key=True, autoincrement=True)
     person_id    = Column(BigInteger, ForeignKey("persons.id", ondelete="CASCADE"), nullable=False)
-    type         = Column(Enum("PHOTO", "VIDEO", "AUDIO"), nullable=False)
+    type         = Column(Enum("PHOTO", "VIDEO", "AUDIO", name="media_type"), nullable=False)
     nom_fichier  = Column(String(255), nullable=False)
     uploaded_by  = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at   = Column(DateTime, default=datetime.utcnow)
@@ -188,7 +188,7 @@ class FamilyShare(Base):
     id         = Column(BigIntPK, primary_key=True, autoincrement=True)
     family_id  = Column(BigInteger, ForeignKey("families.id", ondelete="CASCADE"), nullable=False)
     user_id    = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    permission = Column(Enum("LECTURE", "EDITION"), nullable=False, default="LECTURE")
+    permission = Column(Enum("LECTURE", "EDITION", name="share_permission"), nullable=False, default="LECTURE")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (UniqueConstraint("family_id", "user_id"),)
