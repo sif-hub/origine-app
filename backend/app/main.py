@@ -91,7 +91,13 @@ def _seed_default_users(db):
 # que l'initialisation tourne bien sur les runtimes serverless (ex. Vercel)
 # qui n'appellent pas toujours fidèlement les événements de lifespan, en plus
 # du cas normal (uvicorn), où l'import n'a de toute façon lieu qu'une fois.
-_init_db()
+#
+# Limité à SQLite (dev) : create_all() fait une requête d'introspection par
+# table à chaque cold start, ce qui est inutile et coûteux en production
+# (base déjà provisionnée via Alembic/migration manuelle) — et s'est avéré
+# être une source de plantage sur un runtime serverless (Vercel).
+if settings.IS_SQLITE:
+    _init_db()
 
 # Dossiers d'upload locaux : uniquement pertinents quand Cloudinary n'est pas
 # configuré. Sur un hébergeur sans disque persistant (ex. Vercel), le disque
