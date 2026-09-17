@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+
+# Environnement virtuel
+venv/
+env/
+.venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Variables d'environnement (NE JAMAIS COMMITTER)
+.env
+.env.*
+!.env.example
+
+# Base SQLite locale
+*.db
+*.db-journal
+
+# Uploads utilisateurs
+storage/uploads/*
+!storage/uploads/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/

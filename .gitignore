@@ -1,0 +1,9 @@
+.claude/
+*.DS_Store
+
+# IDE
+.idea/
+*.iml
+
+# Fichiers de sauvegarde / cruft de session
+*.bak
