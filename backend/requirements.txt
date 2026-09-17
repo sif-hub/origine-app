@@ -7,6 +7,10 @@ psycopg2-binary>=2.9,<3.0
 cryptography>=43,<47
 python-jose[cryptography]>=3.3,<4.0
 passlib[bcrypt]>=1.7,<2.0
+# bcrypt >=4.1 durcit la limite des 72 octets côté C et fait planter le
+# self-test interne de passlib 1.7.4 (dernière version, non maintenue) —
+# épinglé à la dernière version compatible connue.
+bcrypt==4.0.1
 python-multipart>=0.0.9,<1.0
 python-dotenv>=1.0,<2.0
 httpx>=0.27,<1.0
