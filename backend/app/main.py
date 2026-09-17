@@ -3,7 +3,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
 import os
 
 from .core.database import engine, SessionLocal, Base
@@ -88,22 +87,28 @@ def _seed_default_users(db):
     print("    jean@origine.cm   →  Test1234!\n")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    _init_db()
-    os.makedirs(os.path.join(settings.UPLOAD_DIR, "avatars"), exist_ok=True)
-    os.makedirs(os.path.join(settings.UPLOAD_DIR, "person_documents"), exist_ok=True)
-    os.makedirs(os.path.join(settings.UPLOAD_DIR, "person_memories"), exist_ok=True)
-    os.makedirs(os.path.join(settings.UPLOAD_DIR, "story_media"), exist_ok=True)
-    os.makedirs(os.path.join(settings.UPLOAD_DIR, "certification_documents"), exist_ok=True)
-    os.makedirs(os.path.join(settings.UPLOAD_DIR, "family_messages"), exist_ok=True)
-    yield
+# Exécuté à l'import du module plutôt que dans le lifespan ASGI : garantit
+# que l'initialisation tourne bien sur les runtimes serverless (ex. Vercel)
+# qui n'appellent pas toujours fidèlement les événements de lifespan, en plus
+# du cas normal (uvicorn), où l'import n'a de toute façon lieu qu'une fois.
+_init_db()
+
+# Dossiers d'upload locaux : uniquement pertinents quand Cloudinary n'est pas
+# configuré. Sur un hébergeur sans disque persistant (ex. Vercel), le disque
+# de déploiement est en lecture seule — y écrire ferait planter l'import du
+# module ; dans ce cas, le stockage passe entièrement par Cloudinary (voir
+# services/storage_service.py) et ces dossiers ne servent à rien.
+if not (settings.CLOUDINARY_CLOUD_NAME and settings.CLOUDINARY_API_KEY and settings.CLOUDINARY_API_SECRET):
+    for _subfolder in (
+        "avatars", "person_documents", "person_memories",
+        "story_media", "certification_documents", "family_messages",
+    ):
+        os.makedirs(os.path.join(settings.UPLOAD_DIR, _subfolder), exist_ok=True)
 
 
 app = FastAPI(
     title="ORIGINE API",
     version="1.0.0",
-    lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
 )

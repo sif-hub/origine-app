@@ -1,19 +1,16 @@
 # app/routers/auth.py
 
-import os
-import secrets
-
 from fastapi import APIRouter, Depends, Request, Form, File, UploadFile, HTTPException
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.config import settings
 from ..core.security import get_current_user
 from ..schemas.auth import (
     RegisterRequest, LoginRequest, RefreshRequest,
     UpdateProfileRequest, ChangePasswordRequest
 )
 from ..services import auth_service
+from ..services.storage_service import save_upload
 from ..core.security import verify_password, hash_password
 
 router = APIRouter(prefix="/auth", tags=["Authentification"])
@@ -45,15 +42,7 @@ async def register(
     if photo is not None and photo.filename:
         if photo.content_type not in ALLOWED_PHOTO_MIME:
             raise HTTPException(status_code=400, detail="Format non autorisé. Utilisez JPEG, PNG ou WEBP.")
-        content = await photo.read()
-        if len(content) > settings.MAX_UPLOAD_SIZE:
-            raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 5 Mo).")
-        ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else "jpg"
-        photo_filename = f"{secrets.token_hex(16)}.{ext}"
-        dest_dir = os.path.join(settings.UPLOAD_DIR, "avatars")
-        os.makedirs(dest_dir, exist_ok=True)
-        with open(os.path.join(dest_dir, photo_filename), "wb") as f:
-            f.write(content)
+        photo_filename = await save_upload(photo, "avatars")
 
     user = auth_service.register_user(db, body.model_dump(), photo_filename=photo_filename)
     return {

@@ -1,7 +1,5 @@
 # app/routers/stories.py
 
-import os
-import secrets
 from datetime import date
 from typing import List, Optional
 
@@ -10,9 +8,9 @@ from pydantic import ValidationError
 from pydantic import BaseModel
 from ..core.database import get_db
 from ..core.security import get_current_user, require_admin
-from ..core.config import settings
 from ..schemas.story import StoryCreate, CommentCreate, ReportCreate, CertificationRequestCreate
 from ..services import story_service as svc
+from ..services.storage_service import save_upload as _save_upload
 
 router = APIRouter(tags=["Histoires"])
 
@@ -22,22 +20,6 @@ ALLOWED_MEDIA_MIME = {
     "audio/mpeg", "audio/mp4", "audio/wav", "audio/x-m4a",
 }
 ALLOWED_DOCUMENT_MIME = {"application/pdf", "image/jpeg", "image/png"}
-
-
-async def _save_upload(upload: UploadFile, subfolder: str) -> str:
-    content = await upload.read()
-    if len(content) > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 5 Mo).")
-
-    ext = upload.filename.rsplit(".", 1)[-1].lower() if upload.filename and "." in upload.filename else "bin"
-    filename = f"{secrets.token_hex(16)}.{ext}"
-    dest_dir = os.path.join(settings.UPLOAD_DIR, subfolder)
-    os.makedirs(dest_dir, exist_ok=True)
-
-    with open(os.path.join(dest_dir, filename), "wb") as f:
-        f.write(content)
-
-    return filename
 
 
 # ── HISTOIRES ──────────────────────────────────────────────────────────

@@ -7,17 +7,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../../shared/models/family_chat_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../../auth/domain/auth_bloc.dart';
 import '../../data/family_chat_repository.dart';
 import '../../domain/family_chat_bloc.dart';
 
-String _familyMediaUrl(String filename) {
-  final base = AppConstants.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
-  return '$base/uploads/family_messages/$filename';
-}
+String _familyMediaUrl(String filename) =>
+    resolveMediaUrl('family_messages', filename);
 
 class FamilyChatScreen extends StatelessWidget {
   final FamilyGroupModel group;

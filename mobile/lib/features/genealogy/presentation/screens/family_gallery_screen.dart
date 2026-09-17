@@ -4,15 +4,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../../shared/models/person_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../data/genealogy_repository.dart';
 
-String _uploadUrl(String subfolder, String filename) {
-  final base = AppConstants.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
-  return '$base/uploads/$subfolder/$filename';
-}
+String _uploadUrl(String subfolder, String filename) =>
+    resolveMediaUrl(subfolder, filename);
 
 class FamilyGalleryScreen extends StatefulWidget {
   final int familyId;

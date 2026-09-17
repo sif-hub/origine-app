@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../auth/domain/auth_bloc.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
@@ -42,8 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _photoUrl(UserModel? user) {
     final fileName = _photoOverride ?? user?.photoProfil;
     if (fileName == null) return null;
-    final base = AppConstants.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
-    return '$base/uploads/avatars/$fileName';
+    return resolveMediaUrl('avatars', fileName);
   }
 
   Future<void> _changePhoto() async {

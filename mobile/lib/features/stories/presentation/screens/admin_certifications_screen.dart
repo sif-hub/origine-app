@@ -3,15 +3,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../../shared/models/story_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../data/stories_repository.dart';
 
-String _documentUrl(String filename) {
-  final base = AppConstants.apiBaseUrl.replaceAll(RegExp(r'/api/?$'), '');
-  return '$base/uploads/certification_documents/$filename';
-}
+String _documentUrl(String filename) =>
+    resolveMediaUrl('certification_documents', filename);
 
 class AdminCertificationsScreen extends StatefulWidget {
   const AdminCertificationsScreen({super.key});

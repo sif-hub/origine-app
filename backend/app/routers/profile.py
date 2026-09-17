@@ -5,8 +5,7 @@ from sqlalchemy.orm import Session
 from ..core.database import get_db
 from ..core.security import get_current_user, verify_password, hash_password
 from ..schemas.auth import UpdateProfileRequest, ChangePasswordRequest
-import os, secrets, shutil
-from ..core.config import settings
+from ..services.storage_service import save_upload
 
 router = APIRouter(prefix="/profile", tags=["Profil"])
 
@@ -40,19 +39,7 @@ async def upload_avatar(
     if avatar.content_type not in ALLOWED_MIME:
         raise HTTPException(status_code=400, detail="Format non autorisé. Utilisez JPEG, PNG ou WEBP.")
 
-    content = await avatar.read()
-    if len(content) > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 5 Mo).")
-
-    ext = avatar.filename.rsplit(".", 1)[-1].lower() if "." in avatar.filename else "jpg"
-    filename = f"{secrets.token_hex(16)}.{ext}"
-    dest_dir = os.path.join(settings.UPLOAD_DIR, "avatars")
-    os.makedirs(dest_dir, exist_ok=True)
-
-    with open(os.path.join(dest_dir, filename), "wb") as f:
-        f.write(content)
-
-    current_user.photo_profil = filename
+    current_user.photo_profil = await save_upload(avatar, "avatars")
     db.commit()
     db.refresh(current_user)
     return {"success": True, "message": "Avatar mis à jour.", "data": {"profile": current_user.to_public_dict()}}

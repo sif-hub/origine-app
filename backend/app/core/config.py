@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     VAPID_PRIVATE_KEY: str = ""
     VAPID_CLAIMS_EMAIL: str = "mailto:admin@origine.cm"
 
+    # Stockage fichiers (Cloudinary) — si renseigné, remplace le disque local
+    # pour les uploads (nécessaire en production sur un hébergeur sans disque
+    # persistant, ex. Vercel).
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     @property
     def IS_SQLITE(self) -> bool:
         return not self.DB_HOST

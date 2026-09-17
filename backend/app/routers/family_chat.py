@@ -1,36 +1,18 @@
 # app/routers/family_chat.py
 
-import os
-import secrets
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from ..core.database import get_db
 from ..core.security import get_current_user
-from ..core.config import settings
 from ..schemas.family_chat import GroupCreate, AddMemberRequest, MessageCreate
 from ..services import family_chat_service as svc
 from ..services import push_service
+from ..services.storage_service import save_upload as _save_upload
 
 router = APIRouter(tags=["Famille"])
 
 ALLOWED_IMAGE_MIME = {"image/jpeg", "image/png", "image/webp"}
-
-
-async def _save_upload(upload: UploadFile, subfolder: str) -> str:
-    content = await upload.read()
-    if len(content) > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 5 Mo).")
-
-    ext = upload.filename.rsplit(".", 1)[-1].lower() if upload.filename and "." in upload.filename else "bin"
-    filename = f"{secrets.token_hex(16)}.{ext}"
-    dest_dir = os.path.join(settings.UPLOAD_DIR, subfolder)
-    os.makedirs(dest_dir, exist_ok=True)
-
-    with open(os.path.join(dest_dir, filename), "wb") as f:
-        f.write(content)
-
-    return filename
 
 
 # ── GROUPES ─────────────────────────────────────────────────────────────
