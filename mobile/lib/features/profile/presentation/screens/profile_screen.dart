@@ -12,7 +12,7 @@ import '../../../../shared/models/user_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../../../core/api/api_client.dart';
 import 'package:dio/dio.dart';
-import '../../../stories/presentation/screens/admin_certifications_screen.dart';
+import '../../../admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../../calendar/presentation/screens/calendar_screen.dart';
 import '../../../../core/push/push_service.dart';
 
@@ -300,10 +300,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     if (user?.role == 'ADMIN') ...[
                       AppPrimaryButton(
-                        label: 'Certifications à valider',
+                        label: 'Administration',
                         backgroundColor: AppColors.or,
                         onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const AdminCertificationsScreen(),
+                          builder: (_) => const AdminDashboardScreen(),
                         )),
                       ),
                       const SizedBox(height: 16),

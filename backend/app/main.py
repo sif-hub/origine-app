@@ -21,7 +21,7 @@ from .models import FamilyGroup, FamilyGroupMember, FamilyMessage  # noqa
 from .models import FamilyEvent                               # noqa
 from .models import PushSubscription                           # noqa
 
-from .routers import auth, profile, genealogy, ai, stories, family_chat, events, push
+from .routers import auth, profile, genealogy, ai, stories, family_chat, events, push, admin
 
 
 def _init_db():
@@ -141,6 +141,7 @@ app.include_router(stories.router, prefix="/api")
 app.include_router(family_chat.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(push.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 
 
 @app.exception_handler(RuntimeError)

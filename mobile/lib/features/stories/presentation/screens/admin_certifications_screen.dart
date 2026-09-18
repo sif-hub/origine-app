@@ -12,7 +12,8 @@ String _documentUrl(String filename) =>
     resolveMediaUrl('certification_documents', filename);
 
 class AdminCertificationsScreen extends StatefulWidget {
-  const AdminCertificationsScreen({super.key});
+  final bool embedded;
+  const AdminCertificationsScreen({super.key, this.embedded = false});
 
   @override
   State<AdminCertificationsScreen> createState() => _AdminCertificationsScreenState();
@@ -63,15 +64,13 @@ class _AdminCertificationsScreenState extends State<AdminCertificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Certifications à valider')),
-      body: _error != null
-          ? Center(child: AppBanner(message: _error!))
-          : _requests == null
-              ? const AppLoader()
-              : _requests!.isEmpty
-                  ? const Center(child: Text('Aucune demande en attente.'))
-                  : ListView.separated(
+    final body = _error != null
+        ? Center(child: AppBanner(message: _error!))
+        : _requests == null
+            ? const AppLoader()
+            : _requests!.isEmpty
+                ? const Center(child: Text('Aucune demande en attente.'))
+                : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: _requests!.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -163,7 +162,13 @@ class _AdminCertificationsScreenState extends State<AdminCertificationsScreen> {
                           ),
                         );
                       },
-                    ),
+                    );
+
+    if (widget.embedded) return body;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Certifications à valider')),
+      body: body,
     );
   }
 }
