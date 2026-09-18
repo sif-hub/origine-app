@@ -120,7 +120,8 @@ class AIManager:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={settings.GEMINI_API_KEY}"
 
         with httpx.Client(timeout=45) as client:
-            r = client.post(url, json={
+            for attempt in range(3):
+                r = client.post(url, json={
                 "contents": [{"role": "user", "parts": [{"text": f"{system}\n\n{user}"}]}],
                 "generationConfig": {
                     "maxOutputTokens": max_tokens,
@@ -132,7 +133,12 @@ class AIManager:
                     # conversationnel.
                     "thinkingConfig": {"thinkingBudget": 0},
                 },
-            })
+                })
+                # 503/429 : surcharge ou quota momentané côté Google, souvent transitoire.
+                if r.status_code in (429, 503) and attempt < 2:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                break
             r.raise_for_status()
             data = r.json()
             candidate = data["candidates"][0]
