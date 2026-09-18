@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+git clone --depth 1 --branch stable https://github.com/flutter/flutter.git /tmp/flutter
+export PATH="/tmp/flutter/bin:$PATH"
+flutter config --no-analytics
+flutter pub get
+flutter build web --release --dart-define=API_BASE_URL=https://origine-app.vercel.app/api
