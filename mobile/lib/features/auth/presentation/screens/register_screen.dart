@@ -216,8 +216,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const Text('Sexe', style: TextStyle(fontSize: 13, color: AppColors.gris, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Row(
-                    children: ['M', 'F', 'AUTRE'].map((s) {
-                      final labels = {'M': 'Masculin', 'F': 'Féminin', 'AUTRE': 'Autre'};
+                    children: ['M', 'F'].map((s) {
+                      final labels = {'M': 'Masculin', 'F': 'Féminin'};
                       final selected = _sexe == s;
                       return Expanded(
                         child: GestureDetector(
