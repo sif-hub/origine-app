@@ -1,8 +1,9 @@
 # app/main.py
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 import os
 
 from .core.database import engine, SessionLocal, Base
@@ -140,4 +141,15 @@ app.include_router(stories.router, prefix="/api")
 app.include_router(family_chat.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(push.router, prefix="/api")
+
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    # Levée par AIManager.ask() quand tous les fournisseurs IA ont échoué
+    # (ex: clé manquante, quota épuisé, timeout réseau) — évite un 500 brut
+    # sans message exploitable côté client.
+    return JSONResponse(
+        status_code=503,
+        content={"success": False, "message": "Service IA temporairement indisponible. Réessayez dans un instant."},
+    )
 

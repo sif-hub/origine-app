@@ -66,7 +66,7 @@ class AIManager:
         if not settings.CLAUDE_API_KEY:
             raise RuntimeError("Clé API Claude non configurée (CLAUDE_API_KEY).")
 
-        with httpx.Client(timeout=30) as client:
+        with httpx.Client(timeout=45) as client:
             r = client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
@@ -88,7 +88,7 @@ class AIManager:
         if not settings.OPENAI_API_KEY:
             raise RuntimeError("Clé API OpenAI non configurée (OPENAI_API_KEY).")
 
-        with httpx.Client(timeout=30) as client:
+        with httpx.Client(timeout=45) as client:
             r = client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={
@@ -119,7 +119,7 @@ class AIManager:
         model = "gemini-flash-latest"
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={settings.GEMINI_API_KEY}"
 
-        with httpx.Client(timeout=30) as client:
+        with httpx.Client(timeout=45) as client:
             r = client.post(url, json={
                 "contents": [{"role": "user", "parts": [{"text": f"{system}\n\n{user}"}]}],
                 "generationConfig": {
@@ -148,7 +148,7 @@ class AIManager:
         if not settings.DEEPSEEK_API_KEY:
             raise RuntimeError("Clé API DeepSeek non configurée (DEEPSEEK_API_KEY).")
 
-        with httpx.Client(timeout=30) as client:
+        with httpx.Client(timeout=45) as client:
             r = client.post(
                 "https://api.deepseek.com/chat/completions",
                 headers={
