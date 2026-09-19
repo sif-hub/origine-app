@@ -45,7 +45,16 @@ class UserModel extends Equatable {
     this.certifie = false,
   });
 
-  String get nomComplet => '$prenom $nom';
+  String get nomComplet => '$prenom $nom'.trim();
+
+  /// Initiales sûres même si le prénom ou le nom est vide.
+  String get initiales {
+    final letters = [prenom, nom]
+        .where((p) => p.trim().isNotEmpty)
+        .map((p) => p.trim()[0].toUpperCase())
+        .join();
+    return letters.isEmpty ? '?' : letters;
+  }
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
         id: int.tryParse(json['id'].toString()) ?? 0,

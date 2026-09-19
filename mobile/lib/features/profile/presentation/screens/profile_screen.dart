@@ -124,6 +124,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Obligatoire' : null;
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _isSaving = true; _errorMessage = null; _successMessage = null; });
@@ -168,9 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         AppAvatar(
                           imageUrl: _photoUrl(user),
-                          initials: user != null
-                              ? '${user.prenom[0]}${user.nom[0]}'
-                              : '?',
+                          initials: user?.initiales ?? '?',
                           radius: 38,
                         ),
                         if (_uploadingPhoto)
@@ -246,9 +246,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     Row(
                       children: [
-                        Expanded(child: AppTextField(label: 'Nom', controller: _nomCtrl)),
+                        Expanded(child: AppTextField(label: 'Nom', controller: _nomCtrl, validator: _required)),
                         const SizedBox(width: 12),
-                        Expanded(child: AppTextField(label: 'Prénom', controller: _prenomCtrl)),
+                        Expanded(child: AppTextField(label: 'Prénom', controller: _prenomCtrl, validator: _required)),
                       ],
                     ),
                     const SizedBox(height: 14),

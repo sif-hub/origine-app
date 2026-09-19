@@ -1,6 +1,7 @@
 // lib/features/genealogy/presentation/screens/genealogy_screen.dart
 
 import 'package:flutter/material.dart';
+import '../widgets/family_tree_view.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -251,16 +252,11 @@ class _GenealogyViewState extends State<_GenealogyView> {
     );
   }
 
-  // ── VUE ARBRE (Canvas simplifié) ────────────────────────────────────
+  // ── VUE ARBRE ───────────────────────────────────────────────────────
   Widget _buildTreeView(FamilyTreeModel tree) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: _TreeCanvas(tree: tree, onNodeTap: (person) {
-          _showPersonDetails(context, tree, person);
-        }),
-      ),
+    return FamilyTreeView(
+      tree: tree,
+      onNodeTap: (person) => _showPersonDetails(context, tree, person),
     );
   }
 
@@ -393,184 +389,6 @@ class _PersonTile extends StatelessWidget {
           icon: const Icon(Icons.add_circle, color: AppColors.or),
           onPressed: onAddRelation,
         ),
-      ),
-    );
-  }
-}
-
-// ── CANVAS ARBRE GÉNÉALOGIQUE (flutter canvas simplifié) ───────────────
-class _TreeCanvas extends StatelessWidget {
-  final FamilyTreeModel tree;
-  final void Function(PersonModel) onNodeTap;
-
-  const _TreeCanvas({required this.tree, required this.onNodeTap});
-
-  @override
-  Widget build(BuildContext context) {
-    if (tree.nodes.isEmpty) return const SizedBox.shrink();
-
-    const nodeW = 130.0;
-    const nodeH = 60.0;
-    const hSpacing = 30.0;
-    const vSpacing = 60.0;
-
-    // Distribution simple : une colonne par génération
-    final Map<int, int> levels = {};
-    final Map<int, List<int>> nodesByLevel = {};
-
-    for (int i = 0; i < tree.nodes.length; i++) {
-      levels[tree.nodes[i].id] = 0;
-    }
-    for (final edge in tree.edges) {
-      if (edge.type == 'ENFANT') {
-        final parentLevel = levels[edge.source] ?? 0;
-        if ((levels[edge.target] ?? 0) <= parentLevel) {
-          levels[edge.target] = parentLevel + 1;
-        }
-      }
-    }
-    for (final node in tree.nodes) {
-      final lvl = levels[node.id] ?? 0;
-      nodesByLevel.putIfAbsent(lvl, () => []).add(node.id);
-    }
-
-    final positions = <int, Offset>{};
-    for (final entry in nodesByLevel.entries) {
-      final lvl = entry.key;
-      final ids = entry.value;
-      for (int i = 0; i < ids.length; i++) {
-        positions[ids[i]] = Offset(
-          i * (nodeW + hSpacing),
-          lvl * (nodeH + vSpacing),
-        );
-      }
-    }
-
-    final maxX = positions.values.fold(0.0, (m, o) => o.dx > m ? o.dx : m) + nodeW;
-    final maxY = positions.values.fold(0.0, (m, o) => o.dy > m ? o.dy : m) + nodeH;
-
-    return SizedBox(
-      width: maxX + 20,
-      height: maxY + 20,
-      child: Stack(
-        children: [
-          // Traits entre noeuds
-          CustomPaint(
-            size: Size(maxX + 20, maxY + 20),
-            painter: _TreePainter(tree: tree, positions: positions,
-                nodeW: nodeW, nodeH: nodeH),
-          ),
-          // Cartes personnes
-          ...tree.nodes.map((node) {
-            final pos = positions[node.id];
-            if (pos == null) return const SizedBox.shrink();
-            return Positioned(
-              left: pos.dx,
-              top: pos.dy,
-              child: GestureDetector(
-                onTap: () => onNodeTap(node),
-                child: _NodeCard(person: node, width: nodeW, height: nodeH),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _TreePainter extends CustomPainter {
-  final FamilyTreeModel tree;
-  final Map<int, Offset> positions;
-  final double nodeW;
-  final double nodeH;
-
-  const _TreePainter({
-    required this.tree, required this.positions,
-    required this.nodeW, required this.nodeH,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paintLine = Paint()
-      ..color = AppColors.grisClair
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    final paintConjoint = Paint()
-      ..color = AppColors.or.withOpacity(0.6)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    for (final edge in tree.edges) {
-      final from = positions[edge.source];
-      final to = positions[edge.target];
-      if (from == null || to == null) continue;
-
-      final p = edge.type == 'CONJOINT' ? paintConjoint : paintLine;
-
-      final start = Offset(from.dx + nodeW / 2, from.dy + nodeH / 2);
-      final end = Offset(to.dx + nodeW / 2, to.dy + nodeH / 2);
-
-      final path = Path()
-        ..moveTo(start.dx, start.dy)
-        ..cubicTo(start.dx, (start.dy + end.dy) / 2,
-            end.dx, (start.dy + end.dy) / 2, end.dx, end.dy);
-
-      canvas.drawPath(path, p);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
-}
-
-class _NodeCard extends StatelessWidget {
-  final PersonModel person;
-  final double width;
-  final double height;
-
-  const _NodeCard({required this.person, required this.width, required this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = person.sexe == 'M'
-        ? AppColors.vertForet
-        : person.sexe == 'F'
-            ? AppColors.erreur
-            : AppColors.gris;
-
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: AppColors.blanc,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: borderColor.withOpacity(0.15),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            person.nomComplet,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            person.dateNaissance != null ? person.annees : '?',
-            style: const TextStyle(fontSize: 10, color: AppColors.gris),
-          ),
-        ],
       ),
     );
   }

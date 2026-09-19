@@ -2,7 +2,8 @@
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from ..models.genealogy import Family, Person, Relationship, PersonDocument, PersonMemory
+from ..models.genealogy import Family, FamilyShare, Person, Relationship, PersonDocument, PersonMemory
+from ..models.user import User
 from typing import Optional
 
 
@@ -18,6 +19,66 @@ def create_family(db: Session, owner_id: int, nom: str,
 
 def get_user_families(db: Session, owner_id: int):
     return db.query(Family).filter(Family.owner_id == owner_id).all()
+
+
+def get_shared_families(db: Session, user_id: int):
+    """Arbres partagés avec l'utilisateur : (famille, permission, propriétaire)."""
+    rows = (
+        db.query(Family, FamilyShare.permission, User)
+        .join(FamilyShare, FamilyShare.family_id == Family.id)
+        .join(User, User.id == Family.owner_id)
+        .filter(FamilyShare.user_id == user_id)
+        .all()
+    )
+    return rows
+
+
+def _owned_family(db: Session, family_id: int, user_id: int) -> Family:
+    family = db.query(Family).filter(Family.id == family_id).first()
+    if not family:
+        raise HTTPException(status_code=404, detail="Famille introuvable.")
+    if family.owner_id != user_id:
+        raise HTTPException(status_code=403, detail="Seul le propriétaire peut gérer le partage.")
+    return family
+
+
+def list_shares(db: Session, family_id: int, owner_id: int):
+    _owned_family(db, family_id, owner_id)
+    return (
+        db.query(FamilyShare, User)
+        .join(User, User.id == FamilyShare.user_id)
+        .filter(FamilyShare.family_id == family_id)
+        .order_by(FamilyShare.created_at.desc())
+        .all()
+    )
+
+
+def add_share(db: Session, family_id: int, owner_id: int, user_id: int, permission: str) -> FamilyShare:
+    family = _owned_family(db, family_id, owner_id)
+    if user_id == owner_id:
+        raise HTTPException(status_code=400, detail="Vous êtes déjà propriétaire de cet arbre.")
+    if not db.query(User).filter(User.id == user_id, User.statut == "ACTIF").first():
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+    share = db.query(FamilyShare).filter(
+        FamilyShare.family_id == family_id, FamilyShare.user_id == user_id).first()
+    if share:
+        share.permission = permission
+    else:
+        share = FamilyShare(family_id=family_id, user_id=user_id, permission=permission)
+        db.add(share)
+    # Un arbre partagé ne peut plus rester "privé".
+    if family.visibilite == "PRIVE":
+        family.visibilite = "PARTAGE"
+    db.commit()
+    db.refresh(share)
+    return share
+
+
+def remove_share(db: Session, family_id: int, owner_id: int, user_id: int) -> None:
+    _owned_family(db, family_id, owner_id)
+    db.query(FamilyShare).filter(
+        FamilyShare.family_id == family_id, FamilyShare.user_id == user_id).delete()
+    db.commit()
 
 
 def update_family(db: Session, family_id: int, data: dict) -> Family:
@@ -37,6 +98,11 @@ def check_access(db: Session, family_id: int, user_id: int, edit_only: bool = Fa
         raise HTTPException(status_code=404, detail="Famille introuvable.")
 
     if family.owner_id == user_id:
+        return family
+
+    share = db.query(FamilyShare).filter(
+        FamilyShare.family_id == family_id, FamilyShare.user_id == user_id).first()
+    if share and (not edit_only or share.permission == "EDITION"):
         return family
 
     if family.visibilite == "PUBLIC" and not edit_only:

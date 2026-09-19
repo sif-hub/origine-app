@@ -22,6 +22,22 @@ ALLOWED_MEMORY_MIME = {
 }
 
 
+def _guard_person_edit(db, person, user):
+    """Seul le propriétaire (ou un membre avec droit d'édition) modifie un arbre."""
+    if person.family_id is None:
+        if person.created_by != user.id:
+            raise HTTPException(status_code=403, detail="Accès refusé à cette personne.")
+    else:
+        svc.check_access(db, person.family_id, user.id, edit_only=True)
+
+
+def _person_or_404(db, person_id, detail="Personne introuvable."):
+    person = db.query(Person).filter(Person.id == person_id).first()
+    if not person:
+        raise HTTPException(status_code=404, detail=detail)
+    return person
+
+
 # ── FAMILLES ────────────────────────────────────────────────────────────
 
 @router.post("/families", status_code=201)
@@ -32,8 +48,38 @@ def create_family(body: FamilyCreate, db=Depends(get_db), user=Depends(get_curre
 
 @router.get("/families")
 def list_families(db=Depends(get_db), user=Depends(get_current_user)):
-    families = svc.get_user_families(db, user.id)
-    return {"success": True, "data": {"families": [f.to_dict() for f in families]}}
+    families = [f.to_dict() for f in svc.get_user_families(db, user.id)]
+    for family, permission, owner in svc.get_shared_families(db, user.id):
+        d = family.to_dict()
+        d.update({
+            "shared": True,
+            "permission": permission,
+            "owner_nom": f"{owner.prenom or ''} {owner.nom}".strip(),
+        })
+        families.append(d)
+    return {"success": True, "data": {"families": families}}
+
+
+# ── PARTAGE D'UN ARBRE AVEC UN MEMBRE ───────────────────────────────────
+
+@router.get("/families/{family_id}/shares")
+def list_family_shares(family_id: int, db=Depends(get_db), user=Depends(get_current_user)):
+    rows = svc.list_shares(db, family_id, user.id)
+    return {"success": True, "data": {"shares": [
+        {"user": u.to_public_dict(), "permission": share.permission}
+        for share, u in rows
+    ]}}
+
+
+@router.post("/families/{family_id}/shares", status_code=201)
+def share_family(family_id: int, body: ShareFamilyRequest, db=Depends(get_db), user=Depends(get_current_user)):
+    share = svc.add_share(db, family_id, user.id, body.user_id, body.permission)
+    return {"success": True, "message": "Arbre partagé.", "data": {"permission": share.permission}}
+
+
+@router.delete("/families/{family_id}/shares/{user_id}", status_code=204)
+def unshare_family(family_id: int, user_id: int, db=Depends(get_db), user=Depends(get_current_user)):
+    svc.remove_share(db, family_id, user.id, user_id)
 
 
 @router.get("/families/{family_id}/tree")
@@ -83,6 +129,8 @@ def list_family_memories(family_id: int, db=Depends(get_db), user=Depends(get_cu
 
 @router.post("/persons", status_code=201)
 def create_person(body: PersonCreate, db=Depends(get_db), user=Depends(get_current_user)):
+    if body.family_id is not None:
+        svc.check_access(db, body.family_id, user.id, edit_only=True)
     person = svc.add_person(db, body.model_dump(), user.id)
     return {"success": True, "message": "Personne ajoutée.", "data": {"person": person.to_dict()}}
 
@@ -97,9 +145,8 @@ def get_person(person_id: int, db=Depends(get_db), user=Depends(get_current_user
 
 @router.put("/persons/{person_id}")
 def update_person(person_id: int, body: PersonUpdate, db=Depends(get_db), user=Depends(get_current_user)):
-    person = db.query(Person).filter(Person.id == person_id).first()
-    if not person:
-        raise HTTPException(status_code=404, detail="Personne introuvable.")
+    person = _person_or_404(db, person_id)
+    _guard_person_edit(db, person, user)
 
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(person, field, value)
@@ -112,18 +159,16 @@ def update_person(person_id: int, body: PersonUpdate, db=Depends(get_db), user=D
 
 @router.delete("/persons/{person_id}", status_code=204)
 def delete_person(person_id: int, db=Depends(get_db), user=Depends(get_current_user)):
-    person = db.query(Person).filter(Person.id == person_id).first()
-    if not person:
-        raise HTTPException(status_code=404, detail="Personne introuvable.")
+    person = _person_or_404(db, person_id)
+    _guard_person_edit(db, person, user)
     db.delete(person)
     db.commit()
 
 
 @router.post("/persons/{person_id}/parent", status_code=201)
 def add_parent(person_id: int, body: PersonCreate, db=Depends(get_db), user=Depends(get_current_user)):
-    child = db.query(Person).filter(Person.id == person_id).first()
-    if not child:
-        raise HTTPException(status_code=404, detail="Enfant introuvable.")
+    child = _person_or_404(db, person_id, "Enfant introuvable.")
+    _guard_person_edit(db, child, user)
 
     data = body.model_dump()
     data["family_id"] = data.get("family_id") or child.family_id
@@ -136,9 +181,8 @@ def add_parent(person_id: int, body: PersonCreate, db=Depends(get_db), user=Depe
 
 @router.post("/persons/{person_id}/child", status_code=201)
 def add_child(person_id: int, body: PersonCreate, db=Depends(get_db), user=Depends(get_current_user)):
-    parent = db.query(Person).filter(Person.id == person_id).first()
-    if not parent:
-        raise HTTPException(status_code=404, detail="Parent introuvable.")
+    parent = _person_or_404(db, person_id, "Parent introuvable.")
+    _guard_person_edit(db, parent, user)
 
     data = body.model_dump()
     data["family_id"] = data.get("family_id") or parent.family_id
@@ -149,9 +193,8 @@ def add_child(person_id: int, body: PersonCreate, db=Depends(get_db), user=Depen
 
 @router.post("/persons/{person_id}/spouse", status_code=201)
 def add_spouse(person_id: int, body: PersonCreate, db=Depends(get_db), user=Depends(get_current_user)):
-    person = db.query(Person).filter(Person.id == person_id).first()
-    if not person:
-        raise HTTPException(status_code=404, detail="Personne introuvable.")
+    person = _person_or_404(db, person_id)
+    _guard_person_edit(db, person, user)
 
     data = body.model_dump()
     data["family_id"] = data.get("family_id") or person.family_id
@@ -162,6 +205,7 @@ def add_spouse(person_id: int, body: PersonCreate, db=Depends(get_db), user=Depe
 
 @router.post("/persons/{person_id}/link")
 def link(person_id: int, body: LinkRequest, db=Depends(get_db), user=Depends(get_current_user)):
+    _guard_person_edit(db, _person_or_404(db, person_id), user)
     svc.link_persons(db, person_id, body.related_person_id, body.type, body.date_debut, body.date_fin)
     return {"success": True, "message": "Lien créé avec succès."}
 
@@ -169,6 +213,7 @@ def link(person_id: int, body: LinkRequest, db=Depends(get_db), user=Depends(get
 @router.put("/persons/{person_id}/privacy")
 def update_person_privacy(person_id: int, body: PersonPrivacyUpdate,
                           db=Depends(get_db), user=Depends(get_current_user)):
+    _guard_person_edit(db, _person_or_404(db, person_id), user)
     person = svc.update_person_privacy(db, person_id, body.model_dump(exclude_none=True))
     return {"success": True, "message": "Confidentialité mise à jour.", "data": {"person": person.to_dict()}}
 
