@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
 import '../../../shared/models/person_model.dart';
+import '../../../shared/models/user_model.dart';
 
 class GenealogyRepository {
   final ApiClient _api = apiClient;
@@ -221,4 +222,53 @@ class GenealogyRepository {
       throw ApiClient.extractError(e);
     }
   }
+
+  // ── PARTAGE D'UN ARBRE ────────────────────────────────────────────────
+  Future<List<UserModel>> searchUsers(String query) async {
+    if (query.trim().length < 2) return [];
+    try {
+      final response = await _api.get('/users/search', queryParameters: {'q': query.trim()});
+      return (response.data['data']['users'] as List)
+          .map((u) => UserModel.fromJson(u as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiClient.extractError(e);
+    }
+  }
+
+  Future<List<FamilyShareModel>> getShares(int familyId) async {
+    try {
+      final response = await _api.get('/families/$familyId/shares');
+      return (response.data['data']['shares'] as List)
+          .map((s) => FamilyShareModel(
+                user: UserModel.fromJson(s['user'] as Map<String, dynamic>),
+                permission: s['permission'] as String? ?? 'LECTURE',
+              ))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiClient.extractError(e);
+    }
+  }
+
+  Future<void> shareFamily(int familyId, int userId, String permission) async {
+    try {
+      await _api.post('/families/$familyId/shares', data: {'user_id': userId, 'permission': permission});
+    } on DioException catch (e) {
+      throw ApiClient.extractError(e);
+    }
+  }
+
+  Future<void> unshareFamily(int familyId, int userId) async {
+    try {
+      await _api.delete('/families/$familyId/shares/$userId');
+    } on DioException catch (e) {
+      throw ApiClient.extractError(e);
+    }
+  }
+}
+
+class FamilyShareModel {
+  final UserModel user;
+  final String permission;
+  const FamilyShareModel({required this.user, required this.permission});
 }

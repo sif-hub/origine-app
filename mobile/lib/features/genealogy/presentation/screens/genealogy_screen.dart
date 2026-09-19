@@ -13,6 +13,7 @@ import 'add_member_wizard_screen.dart';
 import 'family_documents_screen.dart';
 import 'family_gallery_screen.dart';
 import 'family_privacy_screen.dart';
+import 'family_share_screen.dart';
 
 class GenealogyScreen extends StatelessWidget {
   final String? familyId;
@@ -152,7 +153,13 @@ class _GenealogyViewState extends State<_GenealogyView> {
               isExpanded: true,
               underline: const SizedBox(),
               items: families
-                  .map((f) => DropdownMenuItem(value: f, child: Text(f.nom, overflow: TextOverflow.ellipsis)))
+                  .map((f) => DropdownMenuItem(
+                        value: f,
+                        child: Text(
+                          f.shared ? '${f.nom} · partagé par ${f.ownerNom ?? ''}' : f.nom,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ))
                   .toList(),
               onChanged: (f) {
                 if (f != null) context.read<GenealogyBloc>().add(SelectFamily(f));
@@ -202,12 +209,20 @@ class _GenealogyViewState extends State<_GenealogyView> {
               builder: (_) => FamilyGalleryScreen(familyId: family.id),
             ));
           }),
-          action(Icons.settings_outlined, 'Paramètres', () async {
-            await Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => FamilyPrivacyScreen(family: family),
-            ));
-            if (context.mounted) _refresh();
-          }),
+          if (!family.shared) ...[
+            action(Icons.share_outlined, 'Partager', () async {
+              await Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => FamilyShareScreen(family: family),
+              ));
+              if (context.mounted) _refresh();
+            }),
+            action(Icons.settings_outlined, 'Paramètres', () async {
+              await Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => FamilyPrivacyScreen(family: family),
+              ));
+              if (context.mounted) _refresh();
+            }),
+          ],
         ],
       ),
     );

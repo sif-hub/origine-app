@@ -217,12 +217,18 @@ class FamilyModel {
   final String nom;
   final String visibilite;
   final String? description;
+  final bool shared;
+  final String? permission;
+  final String? ownerNom;
 
   const FamilyModel({
     required this.id,
     required this.nom,
     required this.visibilite,
     this.description,
+    this.shared = false,
+    this.permission,
+    this.ownerNom,
   });
 
   factory FamilyModel.fromJson(Map<String, dynamic> json) => FamilyModel(
@@ -230,6 +236,9 @@ class FamilyModel {
         nom: json['nom'] as String? ?? '',
         visibilite: json['visibilite'] as String? ?? 'PRIVE',
         description: json['description'] as String?,
+        shared: json['shared'] == true,
+        permission: json['permission'] as String?,
+        ownerNom: json['owner_nom'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -244,6 +253,9 @@ class FamilyModel {
         nom: nom ?? this.nom,
         visibilite: visibilite ?? this.visibilite,
         description: description ?? this.description,
+        shared: shared,
+        permission: permission,
+        ownerNom: ownerNom,
       );
 }
 
