@@ -1,5 +1,7 @@
 // lib/features/home/presentation/screens/home_screen.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -189,6 +191,8 @@ class _DashboardContent extends StatelessWidget {
                     const SizedBox(height: 28),
                     _buildSectionTitle(context, 'Découvrez les histoires que raconte le Cameroun'),
                     const SizedBox(height: 12),
+                    const _StorySearchBar(),
+                    const SizedBox(height: 12),
                     _buildStoriesFeed(context),
                   ]),
                 ),
@@ -321,14 +325,20 @@ class _DashboardContent extends StatelessWidget {
           if (state.stories.isEmpty) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: Text('Aucune histoire pour le moment. Soyez le premier à partager !')),
+              child: Center(child: Text('Aucune histoire trouvée.')),
             );
           }
+          final authState = context.read<AuthBloc>().state;
+          final me = authState is AuthAuthenticated ? authState.user : null;
           return Column(
             children: state.stories
                 .map((story) => StoryCard(
+                      key: ValueKey(story.id),
                       story: story,
                       onLikeToggle: () => context.read<StoriesBloc>().add(ToggleLike(story.id)),
+                      onDelete: me != null && (me.role == 'ADMIN' || me.id == story.author.id)
+                          ? () => context.read<StoriesBloc>().add(DeleteStory(story.id))
+                          : null,
                     ))
                 .toList(),
           );
@@ -404,6 +414,58 @@ class _QuickAccessTile extends StatelessWidget {
             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+class _StorySearchBar extends StatefulWidget {
+  const _StorySearchBar();
+
+  @override
+  State<_StorySearchBar> createState() => _StorySearchBarState();
+}
+
+class _StorySearchBarState extends State<_StorySearchBar> {
+  final _controller = TextEditingController();
+  Timer? _debounce;
+
+  void _onChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 450), () {
+      if (mounted) context.read<StoriesBloc>().add(SearchFeed(value));
+    });
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      onChanged: _onChanged,
+      textInputAction: TextInputAction.search,
+      onSubmitted: (v) => context.read<StoriesBloc>().add(SearchFeed(v)),
+      decoration: InputDecoration(
+        hintText: 'Rechercher une histoire (titre, région, auteur...)',
+        prefixIcon: const Icon(Icons.search, color: AppColors.gris),
+        suffixIcon: _controller.text.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  _controller.clear();
+                  context.read<StoriesBloc>().add(const SearchFeed(''));
+                  setState(() {});
+                },
+              ),
       ),
     );
   }

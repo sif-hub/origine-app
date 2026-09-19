@@ -15,11 +15,12 @@ class DraftStoryMedia {
 class StoriesRepository {
   final ApiClient _api = apiClient;
 
-  Future<List<StoryModel>> getFeed({int limit = 20, int offset = 0}) async {
+  Future<List<StoryModel>> getFeed({int limit = 20, int offset = 0, String? query}) async {
     try {
       final response = await _api.get('/stories', queryParameters: {
         'limit': limit,
         'offset': offset,
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
       });
       return (response.data['data']['stories'] as List)
           .map((s) => StoryModel.fromJson(s as Map<String, dynamic>))
@@ -27,6 +28,28 @@ class StoriesRepository {
     } on DioException catch (e) {
       throw ApiClient.extractError(e);
     }
+  }
+
+  /// Envoie le fichier directement à Cloudinary (signature fournie par le
+  /// backend) : évite la limite de taille des requêtes du backend serverless.
+  /// Retourne null si Cloudinary n'est pas configuré (dev local).
+  Future<String?> _uploadDirect(DraftStoryMedia media, String folder) async {
+    final sig = (await _api.get('/uploads/signature', queryParameters: {'folder': folder}))
+        .data['data'] as Map<String, dynamic>;
+    if (sig['enabled'] != true) return null;
+
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(media.bytes, filename: media.filename),
+      'api_key': sig['api_key'],
+      'timestamp': sig['timestamp'],
+      'folder': sig['folder'],
+      'signature': sig['signature'],
+    });
+    final response = await Dio().post(
+      'https://api.cloudinary.com/v1_1/${sig['cloud_name']}/auto/upload',
+      data: form,
+    );
+    return response.data['secure_url'] as String;
   }
 
   Future<StoryModel> createStory({
@@ -42,6 +65,19 @@ class StoriesRepository {
     List<DraftStoryMedia> media = const [],
   }) async {
     try {
+      final directUrls = <String>[];
+      final directTypes = <String>[];
+      final viaBackend = <DraftStoryMedia>[];
+      for (final m in media) {
+        final url = await _uploadDirect(m, 'story_media');
+        if (url != null) {
+          directUrls.add(url);
+          directTypes.add(m.type);
+        } else {
+          viaBackend.add(m);
+        }
+      }
+
       final formData = FormData.fromMap({
         'titre': titre,
         'description': description,
@@ -52,10 +88,12 @@ class StoriesRepository {
         if (motsCles != null) 'mots_cles': motsCles,
         if (source != null) 'source': source,
         'autoriser_tts': autoriserTts,
-        'medias': media
+        'medias': viaBackend
             .map((m) => MultipartFile.fromBytes(m.bytes, filename: m.filename))
             .toList(),
-        'media_types': media.map((m) => m.type).toList(),
+        'media_types': viaBackend.map((m) => m.type).toList(),
+        'media_urls': directUrls,
+        'media_url_types': directTypes,
       });
       final response = await _api.post('/stories', data: formData);
       return StoryModel.fromJson(response.data['data']['story'] as Map<String, dynamic>);

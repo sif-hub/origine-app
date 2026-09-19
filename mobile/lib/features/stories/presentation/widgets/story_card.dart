@@ -19,8 +19,9 @@ String storyMediaUrl(String subfolder, String filename) =>
 class StoryCard extends StatefulWidget {
   final StoryModel story;
   final VoidCallback onLikeToggle;
+  final VoidCallback? onDelete;
 
-  const StoryCard({super.key, required this.story, required this.onLikeToggle});
+  const StoryCard({super.key, required this.story, required this.onLikeToggle, this.onDelete});
 
   @override
   State<StoryCard> createState() => _StoryCardState();
@@ -49,6 +50,24 @@ class _StoryCardState extends State<StoryCard> {
   void dispose() {
     _tts.stop();
     super.dispose();
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer cette histoire ?'),
+        content: Text('"${widget.story.titre}" sera définitivement supprimée.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer', style: TextStyle(color: AppColors.erreur)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) widget.onDelete?.call();
   }
 
   Future<void> _share() async {
@@ -130,9 +149,15 @@ class _StoryCardState extends State<StoryCard> {
                   icon: const Icon(Icons.more_vert, size: 18, color: AppColors.gris),
                   onSelected: (v) {
                     if (v == 'report') _showReportDialog(context);
+                    if (v == 'delete') _confirmDelete(context);
                   },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'report', child: Text('Signaler')),
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'report', child: Text('Signaler')),
+                    if (widget.onDelete != null)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Supprimer', style: TextStyle(color: AppColors.erreur)),
+                      ),
                   ],
                 ),
               ],

@@ -54,3 +54,37 @@ async def save_upload(upload: UploadFile, subfolder: str) -> str:
     with open(os.path.join(dest_dir, filename), "wb") as f:
         f.write(content)
     return filename
+
+
+def cloudinary_enabled() -> bool:
+    return _cloudinary_configured
+
+
+def signed_upload_params(folder: str) -> dict:
+    """Paramètres signés pour un upload direct navigateur/app → Cloudinary.
+
+    Évite de faire transiter les fichiers par le backend, dont le corps de
+    requête est plafonné (~4,5 Mo sur Vercel), ce qui bloque vidéos et
+    envois de plusieurs photos.
+    """
+    import time
+    if not _cloudinary_configured:
+        return {"enabled": False}
+    timestamp = int(time.time())
+    signature = cloudinary.utils.api_sign_request(
+        {"folder": folder, "timestamp": timestamp}, settings.CLOUDINARY_API_SECRET
+    )
+    return {
+        "enabled": True,
+        "cloud_name": settings.CLOUDINARY_CLOUD_NAME,
+        "api_key": settings.CLOUDINARY_API_KEY,
+        "timestamp": timestamp,
+        "folder": folder,
+        "signature": signature,
+    }
+
+
+def is_own_cloudinary_url(url: str) -> bool:
+    return _cloudinary_configured and url.startswith(
+        f"https://res.cloudinary.com/{settings.CLOUDINARY_CLOUD_NAME}/"
+    )

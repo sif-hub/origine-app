@@ -16,6 +16,20 @@ class LoadFeed extends StoriesEvent {}
 
 class RefreshFeed extends StoriesEvent {}
 
+class SearchFeed extends StoriesEvent {
+  final String query;
+  const SearchFeed(this.query);
+  @override
+  List<Object?> get props => [query];
+}
+
+class DeleteStory extends StoriesEvent {
+  final int storyId;
+  const DeleteStory(this.storyId);
+  @override
+  List<Object?> get props => [storyId];
+}
+
 class ToggleLike extends StoriesEvent {
   final int storyId;
   const ToggleLike(this.storyId);
@@ -49,18 +63,36 @@ class StoriesError extends StoriesState {
 // ─── BLOC ─────────────────────────────────────
 class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
   final StoriesRepository _repository;
+  String _query = '';
 
   StoriesBloc(this._repository) : super(StoriesLoading()) {
     on<LoadFeed>(_onLoad);
     on<RefreshFeed>(_onLoad);
+    on<SearchFeed>((event, emit) {
+      _query = event.query;
+      return _onLoad(event, emit);
+    });
+    on<DeleteStory>(_onDelete);
     on<ToggleLike>(_onToggleLike);
   }
 
   Future<void> _onLoad(StoriesEvent event, Emitter<StoriesState> emit) async {
     emit(StoriesLoading());
     try {
-      final stories = await _repository.getFeed();
+      final stories = await _repository.getFeed(query: _query);
       emit(StoriesLoaded(stories));
+    } catch (e) {
+      emit(StoriesError(e.toString()));
+    }
+  }
+
+  Future<void> _onDelete(DeleteStory event, Emitter<StoriesState> emit) async {
+    final current = state;
+    try {
+      await _repository.deleteStory(event.storyId);
+      if (current is StoriesLoaded) {
+        emit(StoriesLoaded(current.stories.where((s) => s.id != event.storyId).toList()));
+      }
     } catch (e) {
       emit(StoriesError(e.toString()));
     }

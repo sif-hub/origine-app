@@ -1,10 +1,8 @@
 // lib/features/genealogy/presentation/screens/member_verification_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/constants.dart';
 import '../../../../shared/models/person_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../domain/add_member_bloc.dart';
@@ -69,18 +67,17 @@ class MemberVerificationScreen extends StatelessWidget {
             AppPrimaryButton(
               label: 'Voir dans mon arbre',
               backgroundColor: AppColors.vertForet,
-              onPressed: () => context.go('${AppConstants.routeGenealogy}?family_id=${draft.familyId}'),
+              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
             ),
             const SizedBox(height: 12),
             AppPrimaryButton(
               label: 'Ajouter un autre membre',
               backgroundColor: AppColors.or,
-              onPressed: () =>
-                  context.go('${AppConstants.routeGenealogy}?family_id=${draft.familyId}'),
+              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: () => context.go(AppConstants.routeHome),
+              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
               child: const Text('Retour à l\'accueil'),
             ),
           ],

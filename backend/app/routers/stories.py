@@ -10,6 +10,7 @@ from ..core.database import get_db
 from ..core.security import get_current_user, require_admin
 from ..schemas.story import StoryCreate, CommentCreate, ReportCreate, CertificationRequestCreate
 from ..services import story_service as svc
+from ..services import storage_service
 from ..services.storage_service import save_upload as _save_upload
 
 router = APIRouter(tags=["Histoires"])
@@ -37,6 +38,8 @@ async def create_story(
     autoriser_tts: bool = Form(True),
     medias: List[UploadFile] = File(default=[]),
     media_types: List[str] = Form(default=[]),
+    media_urls: List[str] = Form(default=[]),
+    media_url_types: List[str] = Form(default=[]),
     db=Depends(get_db), user=Depends(get_current_user),
 ):
     try:
@@ -51,7 +54,16 @@ async def create_story(
     if medias and len(medias) != len(media_types):
         raise HTTPException(status_code=400, detail="media_types doit correspondre à medias.")
 
+    if len(media_urls) != len(media_url_types):
+        raise HTTPException(status_code=400, detail="media_url_types doit correspondre à media_urls.")
+    for url, media_type in zip(media_urls, media_url_types):
+        if media_type not in ("PHOTO", "VIDEO", "AUDIO") or not storage_service.is_own_cloudinary_url(url):
+            raise HTTPException(status_code=400, detail="Média envoyé invalide.")
+
     story = svc.create_story(db, body.model_dump(), user.id)
+
+    for url, media_type in zip(media_urls, media_url_types):
+        svc.add_story_media(db, story.id, media_type, url)
 
     for media, media_type in zip(medias, media_types):
         if media_type not in ("PHOTO", "VIDEO", "AUDIO"):
@@ -66,8 +78,9 @@ async def create_story(
 
 
 @router.get("/stories")
-def list_stories(limit: int = 20, offset: int = 0, db=Depends(get_db), user=Depends(get_current_user)):
-    stories = svc.get_feed(db, limit=limit, offset=offset)
+def list_stories(limit: int = 20, offset: int = 0, q: Optional[str] = None,
+                 db=Depends(get_db), user=Depends(get_current_user)):
+    stories = svc.get_feed(db, limit=limit, offset=offset, q=q)
     return {"success": True, "data": {"stories": [s.to_dict(user.id) for s in stories]}}
 
 
@@ -79,7 +92,7 @@ def get_story(story_id: int, db=Depends(get_db), user=Depends(get_current_user))
 
 @router.delete("/stories/{story_id}", status_code=204)
 def delete_story(story_id: int, db=Depends(get_db), user=Depends(get_current_user)):
-    svc.delete_story(db, story_id, user.id)
+    svc.delete_story(db, story_id, user)
 
 
 # ── LIKES ───────────────────────────────────────────────────────────────

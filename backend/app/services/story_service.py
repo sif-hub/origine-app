@@ -1,5 +1,6 @@
 # app/services/story_service.py
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 from ..models.story import Story, StoryMedia, StoryLike, StoryComment, StoryReport, CertificationRequest
@@ -32,13 +33,16 @@ def create_story(db: Session, data: dict, author_id: int) -> Story:
     return story
 
 
-def get_feed(db: Session, limit: int = 20, offset: int = 0):
-    return (
-        _story_query(db)
-        .order_by(Story.created_at.desc())
-        .offset(offset).limit(limit)
-        .all()
-    )
+def get_feed(db: Session, limit: int = 20, offset: int = 0, q: Optional[str] = None):
+    query = _story_query(db)
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        query = query.join(User, Story.author_id == User.id).filter(or_(
+            Story.titre.ilike(like), Story.description.ilike(like),
+            Story.mots_cles.ilike(like), Story.region.ilike(like),
+            Story.village.ilike(like), User.nom.ilike(like), User.prenom.ilike(like),
+        ))
+    return query.order_by(Story.created_at.desc()).offset(offset).limit(limit).all()
 
 
 def get_story(db: Session, story_id: int) -> Story:
@@ -48,11 +52,11 @@ def get_story(db: Session, story_id: int) -> Story:
     return story
 
 
-def delete_story(db: Session, story_id: int, user_id: int):
+def delete_story(db: Session, story_id: int, user: User):
     story = db.query(Story).filter(Story.id == story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="Histoire introuvable.")
-    if story.author_id != user_id:
+    if story.author_id != user.id and user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Vous ne pouvez supprimer que vos propres histoires.")
     db.delete(story)
     db.commit()
