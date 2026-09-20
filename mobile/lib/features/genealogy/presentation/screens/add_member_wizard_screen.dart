@@ -1,5 +1,7 @@
 // lib/features/genealogy/presentation/screens/add_member_wizard_screen.dart
 
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -87,6 +89,8 @@ class _AddMemberWizardViewState extends State<_AddMemberWizardView> {
   final _villageOrigineCtrl = TextEditingController();
   final _nationaliteCtrl = TextEditingController(text: 'Camerounais(e)');
   final _professionCtrl = TextEditingController();
+  Uint8List? _photoBytes;
+  String? _photoName;
 
   // Étape 2
   PersonModel? _referencePerson;
@@ -176,6 +180,8 @@ class _AddMemberWizardViewState extends State<_AddMemberWizardView> {
       villageOrigine: _emptyToNull(_villageOrigineCtrl.text),
       nationalite: _emptyToNull(_nationaliteCtrl.text),
       profession: _emptyToNull(_professionCtrl.text),
+      photoBytes: _photoBytes,
+      photoFilename: _photoName,
       nomPereTexte: _emptyToNull(_nomPereCtrl.text),
       nomMereTexte: _emptyToNull(_nomMereCtrl.text),
       notes: _emptyToNull(_notesCtrl.text),
@@ -252,6 +258,64 @@ class _AddMemberWizardViewState extends State<_AddMemberWizardView> {
   }
 
   // ── ÉTAPE 1 : INFORMATIONS ────────────────────────────────────────
+  Future<void> _pickPhoto() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1600,
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _photoBytes = bytes;
+      _photoName = file.name;
+    });
+  }
+
+  Widget _buildPhotoPicker() {
+    return Center(
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: _pickPhoto,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 46,
+                  backgroundColor: AppColors.grisClair,
+                  backgroundImage: _photoBytes != null ? MemoryImage(_photoBytes!) : null,
+                  child: _photoBytes == null
+                      ? const Icon(Icons.person_outline, size: 44, color: AppColors.gris)
+                      : null,
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: const BoxDecoration(color: AppColors.or, shape: BoxShape.circle),
+                    child: const Icon(Icons.camera_alt, size: 16, color: AppColors.noir),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _photoBytes == null ? 'Ajouter une photo (facultatif)' : 'Changer la photo',
+            style: const TextStyle(fontSize: 12, color: AppColors.gris),
+          ),
+          if (_photoBytes != null)
+            TextButton(
+              onPressed: () => setState(() { _photoBytes = null; _photoName = null; }),
+              child: const Text('Retirer la photo', style: TextStyle(fontSize: 12, color: AppColors.erreur)),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoStep() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -262,6 +326,8 @@ class _AddMemberWizardViewState extends State<_AddMemberWizardView> {
             title: 'Informations personnelles',
             subtitle: 'Renseignez les informations de base du membre.',
           ),
+          const SizedBox(height: 16),
+          _buildPhotoPicker(),
           const SizedBox(height: 16),
           AppTextField(label: 'Nom *', controller: _nomCtrl),
           const SizedBox(height: 12),

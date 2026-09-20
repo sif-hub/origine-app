@@ -1,5 +1,7 @@
 # app/routers/genealogy.py
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from ..core.database import get_db
@@ -9,6 +11,7 @@ from ..schemas.genealogy import (
     LinkRequest, MergeFamiliesRequest, ShareFamilyRequest
 )
 from ..services import genealogy_service as svc
+from ..services import storage_service
 from ..services.storage_service import save_upload as _save_upload
 from ..models.genealogy import Person
 
@@ -165,6 +168,25 @@ def delete_person(person_id: int, db=Depends(get_db), user=Depends(get_current_u
     db.commit()
 
 
+ALLOWED_PHOTO_MIME = {"image/jpeg", "image/png", "image/webp"}
+
+
+@router.post("/persons/{person_id}/photo")
+async def upload_person_photo(
+    person_id: int,
+    photo: UploadFile = File(...),
+    db=Depends(get_db), user=Depends(get_current_user),
+):
+    person = _person_or_404(db, person_id)
+    _guard_person_edit(db, person, user)
+    if photo.content_type not in ALLOWED_PHOTO_MIME:
+        raise HTTPException(status_code=400, detail="Format non autorisé. Utilisez JPEG, PNG ou WEBP.")
+    person.photo = await _save_upload(photo, "person_photos")
+    db.commit()
+    db.refresh(person)
+    return {"success": True, "data": {"person": person.to_dict()}}
+
+
 @router.post("/persons/{person_id}/parent", status_code=201)
 def add_parent(person_id: int, body: PersonCreate, db=Depends(get_db), user=Depends(get_current_user)):
     child = _person_or_404(db, person_id, "Enfant introuvable.")
@@ -252,13 +274,23 @@ def delete_person_document(person_id: int, doc_id: int, db=Depends(get_db), user
 async def upload_person_memory(
     person_id: int,
     type: str = Form(..., pattern="^(PHOTO|VIDEO|AUDIO)$"),
-    fichier: UploadFile = File(...),
+    fichier: Optional[UploadFile] = File(None),
+    url: Optional[str] = Form(None),
     db=Depends(get_db), user=Depends(get_current_user),
 ):
-    if fichier.content_type not in ALLOWED_MEMORY_MIME:
-        raise HTTPException(status_code=400, detail="Format de fichier non autorisé.")
+    _guard_person_edit(db, _person_or_404(db, person_id), user)
 
-    filename = await _save_upload(fichier, "person_memories")
+    if url:
+        # Fichier déjà envoyé directement à Cloudinary par l'application.
+        if not storage_service.is_own_cloudinary_url(url):
+            raise HTTPException(status_code=400, detail="Média envoyé invalide.")
+        filename = url
+    elif fichier is not None:
+        if fichier.content_type not in ALLOWED_MEMORY_MIME:
+            raise HTTPException(status_code=400, detail="Format de fichier non autorisé.")
+        filename = await _save_upload(fichier, "person_memories")
+    else:
+        raise HTTPException(status_code=400, detail="Aucun fichier fourni.")
     memory = svc.add_person_memory(db, person_id, type, filename, user.id)
     return {"success": True, "message": "Souvenir ajouté.", "data": {"memory": memory.to_dict()}}
 

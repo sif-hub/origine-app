@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/home_navigation.dart';
 import '../../../auth/domain/auth_bloc.dart';
 import '../../../genealogy/presentation/screens/genealogy_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
@@ -28,6 +29,25 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    homeTabRequest.addListener(_onTabRequest);
+  }
+
+  @override
+  void dispose() {
+    homeTabRequest.removeListener(_onTabRequest);
+    super.dispose();
+  }
+
+  void _onTabRequest() {
+    final tab = homeTabRequest.value;
+    if (tab == null) return;
+    homeTabRequest.value = null;
+    if (mounted) setState(() => _currentIndex = tab);
+  }
 
   final List<Widget> _pages = const [
     _DashboardTab(),

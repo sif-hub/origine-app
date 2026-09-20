@@ -5,6 +5,7 @@ import '../widgets/family_tree_view.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../../shared/models/person_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../data/genealogy_repository.dart';
@@ -336,8 +337,9 @@ class _GenealogyViewState extends State<_GenealogyView> {
             Row(
               children: [
                 AppAvatar(
+                  imageUrl: person.photo == null ? null : resolveMediaUrl('person_photos', person.photo!),
                   initials: person.nomComplet.isNotEmpty ? person.nomComplet[0] : '?',
-                  radius: 22,
+                  radius: 30,
                   backgroundColor: person.sexe == 'M'
                       ? AppColors.vertForet
                       : person.sexe == 'F'
@@ -390,6 +392,7 @@ class _PersonTile extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         leading: AppAvatar(
+          imageUrl: person.photo == null ? null : resolveMediaUrl('person_photos', person.photo!),
           initials: person.nomComplet.isNotEmpty ? person.nomComplet[0] : '?',
           radius: 22,
           backgroundColor: sexeColor,

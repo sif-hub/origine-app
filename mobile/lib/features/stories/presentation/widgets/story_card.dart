@@ -12,6 +12,7 @@ import '../../../../shared/models/story_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../data/stories_repository.dart';
 import '../screens/story_comments_sheet.dart';
+import 'media_player_dialog.dart';
 
 String storyMediaUrl(String subfolder, String filename) =>
     resolveMediaUrl(subfolder, filename);
@@ -297,14 +298,51 @@ class _MediaPreview extends StatelessWidget {
               ),
             );
           }
-          final icon = m.type == 'VIDEO' ? Icons.videocam : Icons.audiotrack;
-          return Container(
-            width: 220,
-            decoration: BoxDecoration(
-              color: AppColors.grisClair,
-              borderRadius: BorderRadius.circular(10),
+          final url = storyMediaUrl('story_media', m.nomFichier);
+          if (m.type == 'VIDEO') {
+            final poster = videoPosterUrl(url);
+            return GestureDetector(
+              onTap: () => MediaPlayerDialog.show(context, url: videoPlaybackUrl(url)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 220,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(color: Colors.black87),
+                      if (poster != null)
+                        CachedNetworkImage(
+                          imageUrl: poster,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      const Center(
+                        child: Icon(Icons.play_circle_fill, size: 52, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+          return GestureDetector(
+            onTap: () => MediaPlayerDialog.show(context, url: url, audioOnly: true, title: 'Enregistrement audio'),
+            child: Container(
+              width: 220,
+              decoration: BoxDecoration(
+                color: AppColors.grisClair,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.play_circle_outline, size: 40, color: AppColors.vertForet),
+                  SizedBox(height: 6),
+                  Text('Écouter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                ],
+              ),
             ),
-            child: Center(child: Icon(icon, size: 32, color: AppColors.vertForet)),
           );
         },
       ),

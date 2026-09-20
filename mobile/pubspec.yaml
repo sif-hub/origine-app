@@ -54,6 +54,7 @@ dependencies:
 
   # Notifications Web Push (chat familial)
   web: ^1.1.0
+  video_player: ^2.11.1
 
 dev_dependencies:
   flutter_test:

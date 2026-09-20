@@ -7,7 +7,7 @@ from ..services import storage_service
 
 router = APIRouter(prefix="/uploads", tags=["Uploads"])
 
-ALLOWED_FOLDERS = {"story_media", "person_memories", "family_messages"}
+ALLOWED_FOLDERS = {"story_media", "person_memories", "family_messages", "person_photos"}
 
 
 @router.get("/signature")

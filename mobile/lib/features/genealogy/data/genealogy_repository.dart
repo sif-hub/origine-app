@@ -92,6 +92,18 @@ class GenealogyRepository {
     }
   }
 
+  Future<PersonModel> uploadPersonPhoto(int personId, Uint8List bytes, String filename) async {
+    try {
+      final formData = FormData.fromMap({
+        'photo': MultipartFile.fromBytes(bytes, filename: filename),
+      });
+      final response = await _api.post('/persons/$personId/photo', data: formData);
+      return PersonModel.fromJson(response.data['data']['person'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiClient.extractError(e);
+    }
+  }
+
   Future<void> deletePerson(int personId) async {
     try {
       await _api.delete('/persons/$personId');
@@ -191,11 +203,12 @@ class GenealogyRepository {
     required String type,
     required Uint8List bytes,
     required String filename,
+    String? url,
   }) async {
     try {
       final formData = FormData.fromMap({
         'type': type,
-        'fichier': MultipartFile.fromBytes(bytes, filename: filename),
+        if (url != null) 'url': url else 'fichier': MultipartFile.fromBytes(bytes, filename: filename),
       });
       final response = await _api.post('/persons/$personId/memories', data: formData);
       return PersonMemoryModel.fromJson(response.data['data']['memory'] as Map<String, dynamic>);

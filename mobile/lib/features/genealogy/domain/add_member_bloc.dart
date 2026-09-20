@@ -3,6 +3,7 @@
 import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import '../../../core/api/direct_upload.dart';
 import '../data/genealogy_repository.dart';
 import '../../../shared/models/person_model.dart';
 
@@ -39,6 +40,8 @@ class MemberDraft {
   final String? villageOrigine;
   final String? nationalite;
   final String? profession;
+  final Uint8List? photoBytes;
+  final String? photoFilename;
 
   // Étape 2 — Relations
   final String? nomPereTexte;
@@ -72,6 +75,8 @@ class MemberDraft {
     this.villageOrigine,
     this.nationalite,
     this.profession,
+    this.photoBytes,
+    this.photoFilename,
     this.nomPereTexte,
     this.nomMereTexte,
     this.notes,
@@ -165,7 +170,19 @@ class AddMemberBloc extends Bloc<AddMemberEvent, AddMemberState> {
     emit(AddMemberSubmitting());
     final draft = event.draft;
     try {
-      final person = await _createPerson(draft);
+      // Photo : envoi direct à Cloudinary si disponible, sinon via le backend
+      // une fois le membre créé (dev local).
+      String? photoUrl;
+      if (draft.photoBytes != null) {
+        photoUrl = await uploadDirect(draft.photoBytes!, draft.photoFilename ?? 'photo.jpg', 'person_photos');
+      }
+
+      var person = await _createPerson(draft, photoUrl: photoUrl);
+
+      if (draft.photoBytes != null && photoUrl == null) {
+        person = await _repository.uploadPersonPhoto(
+            person.id, draft.photoBytes!, draft.photoFilename ?? 'photo.jpg');
+      }
 
       for (final doc in draft.documents) {
         await _repository.uploadPersonDocument(
@@ -177,11 +194,13 @@ class AddMemberBloc extends Bloc<AddMemberEvent, AddMemberState> {
       }
 
       for (final memory in draft.memories) {
+        final url = await uploadDirect(memory.bytes, memory.filename, 'person_memories');
         await _repository.uploadPersonMemory(
           personId: person.id,
           type: memory.type,
           bytes: memory.bytes,
           filename: memory.filename,
+          url: url,
         );
       }
 
@@ -193,8 +212,9 @@ class AddMemberBloc extends Bloc<AddMemberEvent, AddMemberState> {
     }
   }
 
-  Future<PersonModel> _createPerson(MemberDraft draft) async {
+  Future<PersonModel> _createPerson(MemberDraft draft, {String? photoUrl}) async {
     final payload = draft.toPersonPayload();
+    if (photoUrl != null) payload['photo'] = photoUrl;
 
     if (draft.anchorPersonId == null) {
       return _repository.createPerson(payload);

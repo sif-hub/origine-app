@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/home_navigation.dart';
 import '../../../../shared/models/story_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import 'add_story_wizard_screen.dart';
@@ -53,7 +54,7 @@ class StoryPublishedScreen extends StatelessWidget {
             AppPrimaryButton(
               label: 'Retour à l\'accueil',
               backgroundColor: AppColors.vertForet,
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              onPressed: () => backToHome(context),
             ),
             const SizedBox(height: 12),
             AppPrimaryButton(

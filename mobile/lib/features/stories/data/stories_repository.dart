@@ -3,6 +3,7 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/api/direct_upload.dart';
 import '../../../shared/models/story_model.dart';
 
 class DraftStoryMedia {
@@ -30,27 +31,8 @@ class StoriesRepository {
     }
   }
 
-  /// Envoie le fichier directement à Cloudinary (signature fournie par le
-  /// backend) : évite la limite de taille des requêtes du backend serverless.
-  /// Retourne null si Cloudinary n'est pas configuré (dev local).
-  Future<String?> _uploadDirect(DraftStoryMedia media, String folder) async {
-    final sig = (await _api.get('/uploads/signature', queryParameters: {'folder': folder}))
-        .data['data'] as Map<String, dynamic>;
-    if (sig['enabled'] != true) return null;
-
-    final form = FormData.fromMap({
-      'file': MultipartFile.fromBytes(media.bytes, filename: media.filename),
-      'api_key': sig['api_key'],
-      'timestamp': sig['timestamp'],
-      'folder': sig['folder'],
-      'signature': sig['signature'],
-    });
-    final response = await Dio().post(
-      'https://api.cloudinary.com/v1_1/${sig['cloud_name']}/auto/upload',
-      data: form,
-    );
-    return response.data['secure_url'] as String;
-  }
+  Future<String?> _uploadDirect(DraftStoryMedia media, String folder) =>
+      uploadDirect(media.bytes, media.filename, folder);
 
   Future<StoryModel> createStory({
     required String titre,

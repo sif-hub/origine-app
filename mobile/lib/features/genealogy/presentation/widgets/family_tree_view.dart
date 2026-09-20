@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/media_url.dart';
+import '../../../../shared/widgets/app_widgets.dart';
 import '../../../../shared/models/person_model.dart';
 import 'family_tree_layout.dart';
 
@@ -232,11 +234,11 @@ class _NodeCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 15,
+          AppAvatar(
+            imageUrl: person.photo == null ? null : resolveMediaUrl('person_photos', person.photo!),
+            initials: initial,
+            radius: 17,
             backgroundColor: color,
-            child: Text(initial,
-                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
           ),
           const SizedBox(width: 7),
           Expanded(

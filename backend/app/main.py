@@ -108,7 +108,7 @@ if settings.IS_SQLITE:
 if not (settings.CLOUDINARY_CLOUD_NAME and settings.CLOUDINARY_API_KEY and settings.CLOUDINARY_API_SECRET):
     for _subfolder in (
         "avatars", "person_documents", "person_memories",
-        "story_media", "certification_documents", "family_messages",
+        "story_media", "certification_documents", "family_messages", "person_photos",
     ):
         os.makedirs(os.path.join(settings.UPLOAD_DIR, _subfolder), exist_ok=True)
 

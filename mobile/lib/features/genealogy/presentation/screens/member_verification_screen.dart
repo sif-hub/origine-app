@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/home_navigation.dart';
 import '../../../../shared/models/person_model.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../domain/add_member_bloc.dart';
@@ -67,17 +68,17 @@ class MemberVerificationScreen extends StatelessWidget {
             AppPrimaryButton(
               label: 'Voir dans mon arbre',
               backgroundColor: AppColors.vertForet,
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              onPressed: () => backToHome(context, tab: kTabArbre),
             ),
             const SizedBox(height: 12),
             AppPrimaryButton(
               label: 'Ajouter un autre membre',
               backgroundColor: AppColors.or,
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              onPressed: () => backToHome(context, tab: kTabArbre),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              onPressed: () => backToHome(context),
               child: const Text('Retour à l\'accueil'),
             ),
           ],
