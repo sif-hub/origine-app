@@ -14,6 +14,7 @@ import 'add_member_wizard_screen.dart';
 import 'family_documents_screen.dart';
 import 'family_gallery_screen.dart';
 import 'family_privacy_screen.dart';
+import 'person_detail_screen.dart';
 import 'family_share_screen.dart';
 
 class GenealogyScreen extends StatelessWidget {
@@ -328,106 +329,60 @@ class _GenealogyViewState extends State<_GenealogyView> {
     'FRERE_SOEUR': 'Frère / Sœur',
   };
 
-  void _showPersonDetails(BuildContext context, FamilyTreeModel tree, PersonModel person) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                AppAvatar(
-                  imageUrl: person.photo == null ? null : resolveMediaUrl('person_photos', person.photo!),
-                  initials: person.nomComplet.isNotEmpty ? person.nomComplet[0] : '?',
-                  radius: 30,
-                  backgroundColor: person.sexe == 'M'
-                      ? AppColors.vertForet
-                      : person.sexe == 'F'
-                          ? AppColors.erreur
-                          : AppColors.gris,
-                ),
-                const SizedBox(width: 12),
-                Text(person.nomComplet,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (person.dateNaissance != null) Text('Naissance : ${person.dateNaissance}'),
-            if (person.dateDeces != null) Text('Décès : ${person.dateDeces}'),
-            const SizedBox(height: 16),
-            AppPrimaryButton(
-              label: 'Ajouter un lien familial',
-              onPressed: () {
-                Navigator.pop(context);
-                final state = context.read<GenealogyBloc>().state;
-                if (state is GenealogyLoaded) {
-                  _showAddRelationDialog(context, state, person);
-                }
-              },
-              backgroundColor: AppColors.vertForet,
-            ),
-            if (_canEditCurrentFamily(context)) ...[
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton.icon(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.erreur, size: 18),
-                  label: const Text('Supprimer ce membre',
-                      style: TextStyle(color: AppColors.erreur, fontWeight: FontWeight.w600)),
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    _confirmDeletePerson(context, person);
-                  },
-                ),
-              ),
-            ],
-          ],
+  Future<void> _showPersonDetails(
+      BuildContext context, FamilyTreeModel tree, PersonModel person) async {
+    var currentTree = tree;
+    var current = person;
+    var needsRefresh = false;
+
+    while (true) {
+      final result = await Navigator.of(context).push<String>(MaterialPageRoute(
+        builder: (_) => PersonDetailScreen(
+          person: current,
+          tree: currentTree,
+          canEdit: _canEditCurrentFamily(context),
         ),
-      ),
-    );
+      ));
+      if (!context.mounted) return;
+
+      if (result != null && result.startsWith('open:')) {
+        final parts = result.split(':');
+        if (parts.length > 2) needsRefresh = true;
+        if (needsRefresh) {
+          final st = context.read<GenealogyBloc>().state;
+          final familyId = st is GenealogyLoaded ? st.selectedFamily.id : null;
+          if (familyId != null) {
+            try {
+              currentTree = await GenealogyRepository().getTree(familyId);
+            } catch (_) {}
+          }
+        }
+        final next = currentTree.nodes.where((n) => n.id == int.tryParse(parts[1])).firstOrNull;
+        if (next == null) break;
+        current = next;
+        continue;
+      }
+
+      if (result == 'add_relation') {
+        final st = context.read<GenealogyBloc>().state;
+        if (st is GenealogyLoaded) _showAddRelationDialog(context, st, current);
+      } else if (result == 'deleted') {
+        needsRefresh = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${current.nomComplet} a été supprimé(e) de l\'arbre.')),
+        );
+      } else if (result == 'refresh') {
+        needsRefresh = true;
+      }
+      break;
+    }
+    if (needsRefresh && context.mounted) _refresh();
   }
 
   bool _canEditCurrentFamily(BuildContext context) {
     final st = context.read<GenealogyBloc>().state;
     final family = st is GenealogyLoaded ? st.selectedFamily : null;
     return family == null || !family.shared || family.permission == 'EDITION';
-  }
-
-  Future<void> _confirmDeletePerson(BuildContext context, PersonModel person) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Supprimer ce membre ?'),
-        content: Text(
-          '${person.nomComplet} sera retiré(e) de l\'arbre, avec ses liens familiaux, '
-          'ses documents et ses souvenirs. Cette action est irréversible.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer', style: TextStyle(color: AppColors.erreur)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    try {
-      await GenealogyRepository().deletePerson(person.id);
-      if (!context.mounted) return;
-      _refresh();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${person.nomComplet} a été supprimé(e) de l\'arbre.')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    }
   }
 }
 

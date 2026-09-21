@@ -37,9 +37,10 @@ class PersonCreate(BaseModel):
 class PersonUpdate(BaseModel):
     nom:             Optional[str]  = Field(None, max_length=150)
     prenom:          Optional[str]  = Field(None, max_length=150)
-    sexe:            Optional[str]  = None
+    sexe:            Optional[str]  = Field(None, pattern="^(M|F|INCONNU)$")
     date_naissance:  Optional[date] = None
     date_deces:      Optional[date] = None
+    vivant:          Optional[bool] = None
     notes:           Optional[str]  = None
     photo:           Optional[str]  = Field(None, max_length=255)
     lieu_naissance:  Optional[str]  = Field(None, max_length=200)

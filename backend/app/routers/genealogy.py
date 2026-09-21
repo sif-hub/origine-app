@@ -145,9 +145,11 @@ def create_person(body: PersonCreate, db=Depends(get_db), user=Depends(get_curre
 
 @router.get("/persons/{person_id}")
 def get_person(person_id: int, db=Depends(get_db), user=Depends(get_current_user)):
-    person = db.query(Person).filter(Person.id == person_id).first()
-    if not person:
-        raise HTTPException(status_code=404, detail="Personne introuvable.")
+    person = _person_or_404(db, person_id)
+    if person.family_id is not None:
+        svc.check_access(db, person.family_id, user.id)
+    elif person.created_by != user.id:
+        raise HTTPException(status_code=403, detail="Accès refusé à cette personne.")
     return {"success": True, "data": {"person": person.to_dict()}}
 
 
@@ -156,10 +158,22 @@ def update_person(person_id: int, body: PersonUpdate, db=Depends(get_db), user=D
     person = _person_or_404(db, person_id)
     _guard_person_edit(db, person, user)
 
-    for field, value in body.model_dump(exclude_none=True).items():
+    # exclude_unset : un champ envoyé à null est effacé, un champ absent est conservé.
+    data = body.model_dump(exclude_unset=True)
+    for required in ("nom", "sexe"):
+        if required in data and not data[required]:
+            data.pop(required)
+    if "nom" in data:
+        data["nom"] = data["nom"].strip()
+        if not data["nom"]:
+            raise HTTPException(status_code=422, detail="Le nom est obligatoire.")
+    vivant = data.pop("vivant", None)
+    for field, value in data.items():
         setattr(person, field, value)
-    if body.date_deces is not None:
-        person.vivant = 0
+    if "date_deces" in data:
+        person.vivant = 0 if data["date_deces"] else 1
+    if vivant is not None:
+        person.vivant = 1 if vivant else 0
     db.commit()
     db.refresh(person)
     return {"success": True, "data": {"person": person.to_dict()}}
