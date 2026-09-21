@@ -218,10 +218,15 @@ class _GenealogyViewState extends State<_GenealogyView> {
               if (context.mounted) _refresh();
             }),
             action(Icons.settings_outlined, 'Paramètres', () async {
-              await Navigator.of(context).push(MaterialPageRoute(
+              final result = await Navigator.of(context).push<dynamic>(MaterialPageRoute(
                 builder: (_) => FamilyPrivacyScreen(family: family),
               ));
-              if (context.mounted) _refresh();
+              if (!context.mounted) return;
+              if (result == 'deleted') {
+                context.read<GenealogyBloc>().add(const LoadFamilies());
+              } else {
+                _refresh();
+              }
             }),
           ],
         ],
@@ -264,6 +269,7 @@ class _GenealogyViewState extends State<_GenealogyView> {
       itemBuilder: (_, index) => _PersonTile(
         person: nodes[index],
         onAddRelation: () => _showAddRelationDialog(context, state, nodes[index]),
+        onTap: () => _showPersonDetails(context, state.tree, nodes[index]),
       ),
     );
   }
@@ -328,7 +334,7 @@ class _GenealogyViewState extends State<_GenealogyView> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
+      builder: (sheetContext) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -366,10 +372,62 @@ class _GenealogyViewState extends State<_GenealogyView> {
               },
               backgroundColor: AppColors.vertForet,
             ),
+            if (_canEditCurrentFamily(context)) ...[
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton.icon(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.erreur, size: 18),
+                  label: const Text('Supprimer ce membre',
+                      style: TextStyle(color: AppColors.erreur, fontWeight: FontWeight.w600)),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _confirmDeletePerson(context, person);
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  bool _canEditCurrentFamily(BuildContext context) {
+    final st = context.read<GenealogyBloc>().state;
+    final family = st is GenealogyLoaded ? st.selectedFamily : null;
+    return family == null || !family.shared || family.permission == 'EDITION';
+  }
+
+  Future<void> _confirmDeletePerson(BuildContext context, PersonModel person) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer ce membre ?'),
+        content: Text(
+          '${person.nomComplet} sera retiré(e) de l\'arbre, avec ses liens familiaux, '
+          'ses documents et ses souvenirs. Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer', style: TextStyle(color: AppColors.erreur)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await GenealogyRepository().deletePerson(person.id);
+      if (!context.mounted) return;
+      _refresh();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${person.nomComplet} a été supprimé(e) de l\'arbre.')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 }
 
@@ -377,8 +435,9 @@ class _GenealogyViewState extends State<_GenealogyView> {
 class _PersonTile extends StatelessWidget {
   final PersonModel person;
   final VoidCallback onAddRelation;
+  final VoidCallback? onTap;
 
-  const _PersonTile({required this.person, required this.onAddRelation});
+  const _PersonTile({required this.person, required this.onAddRelation, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -390,6 +449,7 @@ class _PersonTile extends StatelessWidget {
 
     return Card(
       child: ListTile(
+        onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         leading: AppAvatar(
           imageUrl: person.photo == null ? null : resolveMediaUrl('person_photos', person.photo!),

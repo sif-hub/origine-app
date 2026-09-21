@@ -85,6 +85,11 @@ def unshare_family(family_id: int, user_id: int, db=Depends(get_db), user=Depend
     svc.remove_share(db, family_id, user.id, user_id)
 
 
+@router.delete("/families/{family_id}", status_code=204)
+def delete_family(family_id: int, db=Depends(get_db), user=Depends(get_current_user)):
+    svc.delete_family(db, family_id, user.id)
+
+
 @router.get("/families/{family_id}/tree")
 def get_tree(family_id: int, db=Depends(get_db), user=Depends(get_current_user)):
     svc.check_access(db, family_id, user.id)
@@ -164,8 +169,7 @@ def update_person(person_id: int, body: PersonUpdate, db=Depends(get_db), user=D
 def delete_person(person_id: int, db=Depends(get_db), user=Depends(get_current_user)):
     person = _person_or_404(db, person_id)
     _guard_person_edit(db, person, user)
-    db.delete(person)
-    db.commit()
+    svc.delete_person(db, person)
 
 
 ALLOWED_PHOTO_MIME = {"image/jpeg", "image/png", "image/webp"}

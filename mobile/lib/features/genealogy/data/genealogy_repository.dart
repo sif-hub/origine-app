@@ -42,6 +42,14 @@ class GenealogyRepository {
     }
   }
 
+  Future<void> deleteFamily(int familyId) async {
+    try {
+      await _api.delete('/families/$familyId');
+    } on DioException catch (e) {
+      throw ApiClient.extractError(e);
+    }
+  }
+
   Future<FamilyTreeModel> getTree(int familyId) async {
     try {
       final response = await _api.get('/families/$familyId/tree');

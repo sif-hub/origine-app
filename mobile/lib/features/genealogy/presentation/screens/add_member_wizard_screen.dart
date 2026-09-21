@@ -82,7 +82,7 @@ class _AddMemberWizardViewState extends State<_AddMemberWizardView> {
   // Étape 1
   final _nomCtrl = TextEditingController();
   final _prenomCtrl = TextEditingController();
-  String _sexe = 'INCONNU';
+  String _sexe = 'M';
   DateTime? _dateNaissance;
   bool _vivant = true;
   final _lieuNaissanceCtrl = TextEditingController();
@@ -339,7 +339,6 @@ class _AddMemberWizardViewState extends State<_AddMemberWizardView> {
             segments: const [
               ButtonSegment(value: 'M', label: Text('Masculin')),
               ButtonSegment(value: 'F', label: Text('Féminin')),
-              ButtonSegment(value: 'INCONNU', label: Text('Autre')),
             ],
             selected: {_sexe},
             onSelectionChanged: (v) => setState(() => _sexe = v.first),

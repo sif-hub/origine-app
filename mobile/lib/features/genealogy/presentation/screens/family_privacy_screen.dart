@@ -19,6 +19,39 @@ class _FamilyPrivacyScreenState extends State<FamilyPrivacyScreen> {
   final _repository = GenealogyRepository();
   late String _visibilite = widget.family.visibilite;
   bool _saving = false;
+  bool _deleting = false;
+
+  Future<void> _confirmDeleteFamily() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer cet arbre ?'),
+        content: Text(
+          '« ${widget.family.nom} » sera supprimé en entier : tous ses membres, leurs photos, '
+          'documents, souvenirs et liens familiaux, ainsi que les partages. '
+          'Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Tout supprimer', style: TextStyle(color: AppColors.erreur)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _deleting = true);
+    try {
+      await _repository.deleteFamily(widget.family.id);
+      if (!mounted) return;
+      Navigator.of(context).pop('deleted');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -81,6 +114,29 @@ class _FamilyPrivacyScreenState extends State<FamilyPrivacyScreen> {
               isLoading: _saving,
               backgroundColor: AppColors.vertForet,
               onPressed: _save,
+            ),
+            const SizedBox(height: 36),
+            const Divider(),
+            const SizedBox(height: 12),
+            const Text('Zone dangereuse',
+                style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.erreur)),
+            const SizedBox(height: 4),
+            const Text(
+              'Supprime définitivement cet arbre et tous ses membres en une seule fois.',
+              style: TextStyle(fontSize: 12, color: AppColors.gris),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.erreur,
+                side: const BorderSide(color: AppColors.erreur),
+                minimumSize: const Size.fromHeight(46),
+              ),
+              icon: _deleting
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.delete_forever),
+              label: const Text('Supprimer cet arbre'),
+              onPressed: _deleting ? null : _confirmDeleteFamily,
             ),
           ],
         ),

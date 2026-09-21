@@ -33,6 +33,33 @@ def get_shared_families(db: Session, user_id: int):
     return rows
 
 
+def _delete_person_rows(db: Session, person_ids: list) -> None:
+    """Supprime des personnes et tous leurs liens familiaux (sans dépendre
+    du ON DELETE CASCADE de la base, absent par défaut sous SQLite)."""
+    if not person_ids:
+        return
+    db.query(Relationship).filter(
+        (Relationship.person_id.in_(person_ids)) | (Relationship.related_person_id.in_(person_ids))
+    ).delete(synchronize_session=False)
+    for person in db.query(Person).filter(Person.id.in_(person_ids)).all():
+        db.delete(person)  # documents et souvenirs suivent (cascade ORM)
+
+
+def delete_person(db: Session, person: Person) -> None:
+    _delete_person_rows(db, [person.id])
+    db.commit()
+
+
+def delete_family(db: Session, family_id: int, owner_id: int) -> None:
+    """Supprime l'arbre entier : membres, liens, partages, puis la famille."""
+    family = _owned_family(db, family_id, owner_id)
+    ids = [p.id for p in db.query(Person.id).filter(Person.family_id == family_id).all()]
+    _delete_person_rows(db, ids)
+    db.query(FamilyShare).filter(FamilyShare.family_id == family_id).delete(synchronize_session=False)
+    db.delete(family)
+    db.commit()
+
+
 def _owned_family(db: Session, family_id: int, user_id: int) -> Family:
     family = db.query(Family).filter(Family.id == family_id).first()
     if not family:

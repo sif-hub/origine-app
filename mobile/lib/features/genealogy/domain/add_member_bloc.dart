@@ -33,7 +33,7 @@ class MemberDraft {
   // Étape 1 — Informations
   final String nom;
   final String? prenom;
-  final String sexe; // M | F | INCONNU
+  final String sexe; // M | F
   final String? dateNaissance;
   final bool vivant;
   final String? lieuNaissance;
@@ -68,7 +68,7 @@ class MemberDraft {
     this.relationType = 'AUCUN',
     required this.nom,
     this.prenom,
-    this.sexe = 'INCONNU',
+    this.sexe = 'M',
     this.dateNaissance,
     this.vivant = true,
     this.lieuNaissance,
