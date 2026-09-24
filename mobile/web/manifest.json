@@ -1,11 +1,11 @@
 {
-    "name": "origine",
-    "short_name": "origine",
+    "name": "ORIGINE",
+    "short_name": "ORIGINE",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0A3D2E",
+    "theme_color": "#0A3D2E",
+    "description": "ORIGINE — Retrouvez vos racines camerounaises.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
