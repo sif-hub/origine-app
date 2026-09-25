@@ -142,6 +142,7 @@ async def submit_certification_request(
     if document.content_type not in ALLOWED_DOCUMENT_MIME:
         raise HTTPException(status_code=400, detail="Format non autorisé. Utilisez PDF, JPEG ou PNG.")
 
+    svc.ensure_can_request_certification(db, user)  # avant d'enregistrer le fichier
     filename = await _save_upload(document, "certification_documents")
     request = svc.submit_certification_request(
         db, user.id, body.type_professionnel, body.description, filename

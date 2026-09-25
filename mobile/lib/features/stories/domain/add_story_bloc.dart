@@ -111,12 +111,18 @@ class AddStoryBloc extends Bloc<AddStoryEvent, AddStoryState> {
       if (draft.estProfessionnel &&
           draft.typeProfessionnel != null &&
           draft.documentJustificatif != null) {
-        await _repository.submitCertificationRequest(
-          typeProfessionnel: draft.typeProfessionnel!,
-          description: draft.descriptionProfessionnelle,
-          documentBytes: draft.documentJustificatif!.bytes,
-          documentFilename: draft.documentJustificatif!.filename,
-        );
+        try {
+          await _repository.submitCertificationRequest(
+            typeProfessionnel: draft.typeProfessionnel!,
+            description: draft.descriptionProfessionnelle,
+            documentBytes: draft.documentJustificatif!.bytes,
+            documentFilename: draft.documentJustificatif!.filename,
+          );
+        } catch (_) {
+          // L'histoire est déjà publiée : ne pas la faire passer pour un échec
+          // (l'utilisateur la republierait en double). La demande de
+          // certification peut être refusée par le serveur si elle existe déjà.
+        }
       }
 
       emit(AddStorySuccess(story));

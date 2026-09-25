@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/story_model.dart';
+import '../../../auth/domain/auth_bloc.dart';
 import '../../../../shared/widgets/app_widgets.dart';
 import '../../data/stories_repository.dart';
 import '../../domain/add_story_bloc.dart';
@@ -41,7 +42,15 @@ class _AddStoryWizardView extends StatefulWidget {
 class _AddStoryWizardViewState extends State<_AddStoryWizardView> {
   final _pageController = PageController();
   int _step = 0;
-  static const _stepCount = 4;
+
+  // Statut de certification de l'auteur, chargé au démarrage : la demande ne se
+  // fait qu'une fois — l'étape "Auteur" disparaît si l'auteur est déjà certifié
+  // ou si sa demande est en cours d'examen (elle reste possible après un refus).
+  // null = en cours de chargement.
+  String? _certStatus; // NONE | EN_ATTENTE | APPROUVEE | REJETEE | CERTIFIE
+  bool get _askAuthorStep =>
+      _certStatus == null || _certStatus == 'NONE' || _certStatus == 'REJETEE';
+  int get _stepCount => _askAuthorStep ? 4 : 3;
 
   // Étape 1
   final _titreCtrl = TextEditingController();
@@ -62,6 +71,33 @@ class _AddStoryWizardViewState extends State<_AddStoryWizardView> {
   String _typeProfessionnel = 'GRIOT';
   final _descriptionProCtrl = TextEditingController();
   DraftStoryMedia? _document;
+
+  @override
+  void initState() {
+    super.initState();
+    final auth = context.read<AuthBloc>().state;
+    if (auth is AuthAuthenticated && auth.user.certifie) {
+      _certStatus = 'CERTIFIE';
+    } else {
+      _loadCertificationStatus();
+    }
+  }
+
+  Future<void> _loadCertificationStatus() async {
+    String status = 'NONE';
+    try {
+      final req = await StoriesRepository().getMyCertificationStatus();
+      status = (req?['statut'] as String?) ?? 'NONE';
+    } catch (_) {
+      // En cas d'échec réseau, on laisse l'étape visible : le serveur refuse de
+      // toute façon une demande en double.
+    }
+    if (!mounted) return;
+    setState(() {
+      _certStatus = status;
+      if (_step > _stepCount - 1) _step = _stepCount - 1;
+    });
+  }
 
   @override
   void dispose() {
@@ -117,10 +153,11 @@ class _AddStoryWizardViewState extends State<_AddStoryWizardView> {
       source: _emptyToNull(_sourceCtrl.text),
       autoriserTts: _autoriserTts,
       media: _media,
-      estProfessionnel: _estProfessionnel,
-      typeProfessionnel: _estProfessionnel ? _typeProfessionnel : null,
-      descriptionProfessionnelle: _estProfessionnel ? _emptyToNull(_descriptionProCtrl.text) : null,
-      documentJustificatif: _estProfessionnel ? _document : null,
+      estProfessionnel: _askAuthorStep && _estProfessionnel,
+      typeProfessionnel: _askAuthorStep && _estProfessionnel ? _typeProfessionnel : null,
+      descriptionProfessionnelle:
+          _askAuthorStep && _estProfessionnel ? _emptyToNull(_descriptionProCtrl.text) : null,
+      documentJustificatif: _askAuthorStep && _estProfessionnel ? _document : null,
     );
     context.read<AddStoryBloc>().add(SubmitStoryRequested(draft));
   }
@@ -151,7 +188,12 @@ class _AddStoryWizardViewState extends State<_AddStoryWizardView> {
               child: WizardStepIndicator(
                 stepCount: _stepCount,
                 currentStep: _step,
-                labels: const ['Histoire', 'Médias', 'Auteur', 'Aperçu'],
+                labels: [
+                  'Histoire',
+                  'Médias',
+                  if (_askAuthorStep) 'Auteur',
+                  'Aperçu',
+                ],
               ),
             ),
             Expanded(
@@ -161,7 +203,7 @@ class _AddStoryWizardViewState extends State<_AddStoryWizardView> {
                 children: [
                   _buildInfoStep(),
                   _buildMediaStep(),
-                  _buildAuthorStep(),
+                  if (_askAuthorStep) _buildAuthorStep(),
                   _buildPreviewStep(),
                 ],
               ),
@@ -181,6 +223,14 @@ class _AddStoryWizardViewState extends State<_AddStoryWizardView> {
         ),
       ),
     );
+  }
+
+  String _authorSummary() {
+    if (_certStatus == 'CERTIFIE' || _certStatus == 'APPROUVEE') return 'Auteur certifié(e)';
+    if (_certStatus == 'EN_ATTENTE') return 'Certification en cours d\'examen';
+    return _estProfessionnel
+        ? 'Professionnel (${_professionalTypeLabels[_typeProfessionnel]})'
+        : 'Utilisateur lambda';
   }
 
   // ── ÉTAPE 1 : INFORMATIONS ────────────────────────────────────────
@@ -386,6 +436,13 @@ class _AddStoryWizardViewState extends State<_AddStoryWizardView> {
             title: 'Statut de l\'auteur',
             subtitle: 'Vous êtes un professionnel de la transmission historique ?',
           ),
+          if (_certStatus == 'REJETEE') ...[
+            const SizedBox(height: 12),
+            const AppBanner(
+              message: 'Votre précédente demande de certification a été refusée. '
+                  'Vous pouvez en soumettre une nouvelle avec un autre justificatif.',
+            ),
+          ],
           const SizedBox(height: 16),
           RadioListTile<bool>(
             value: false,
@@ -455,9 +512,7 @@ class _AddStoryWizardViewState extends State<_AddStoryWizardView> {
               if (_villageCtrl.text.trim().isNotEmpty) InfoRow('Village', _villageCtrl.text.trim()),
               InfoRow('Catégorie', kStoryCategories[_categorie] ?? _categorie),
               InfoRow('Médias', '${_media.length} fichier(s)'),
-              InfoRow('Auteur', _estProfessionnel
-                  ? 'Professionnel (${_professionalTypeLabels[_typeProfessionnel]})'
-                  : 'Utilisateur lambda'),
+              InfoRow('Auteur', _authorSummary()),
               InfoRow('Écoute (TTS)', _autoriserTts ? 'Activée' : 'Désactivée'),
             ],
           ),

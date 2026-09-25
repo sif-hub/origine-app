@@ -119,6 +119,24 @@ def add_report(db: Session, story_id: int, user_id: int, raison: Optional[str]) 
     return report
 
 
+def ensure_can_request_certification(db: Session, user: User) -> None:
+    """Une demande de certification ne se fait qu'une fois : refusée si l'auteur
+    est déjà certifié ou si une demande est encore en cours d'examen. Après un
+    refus, une nouvelle demande reste possible."""
+    if user.certifie:
+        raise HTTPException(status_code=409, detail="Vous êtes déjà certifié(e).")
+    pending = (
+        db.query(CertificationRequest)
+        .filter(CertificationRequest.user_id == user.id, CertificationRequest.statut == "EN_ATTENTE")
+        .first()
+    )
+    if pending:
+        raise HTTPException(
+            status_code=409,
+            detail="Une demande de certification est déjà en cours d'examen.",
+        )
+
+
 def submit_certification_request(
     db: Session, user_id: int, type_professionnel: str,
     description: Optional[str], document_fichier: str,
