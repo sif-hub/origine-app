@@ -7,3 +7,4 @@
 
 # Fichiers de sauvegarde / cruft de session
 *.bak
+releases/*.apk
